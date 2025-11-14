@@ -1,4 +1,6 @@
+# ────────────────────────────────
 # Logs
+# ────────────────────────────────
 logs
 *.log
 npm-debug.log*
@@ -6,7 +8,7 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# Diagnostic reports (https://nodejs.org/api/report.html)
+# Diagnostic reports
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Runtime data
@@ -22,26 +24,26 @@ lib-cov
 coverage
 *.lcov
 
-# nyc test coverage
+# NYC test coverage
 .nyc_output
 
-# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+# Grunt storage
 .grunt
 
-# Bower dependency directory (https://bower.io/)
+# Bower directory
 bower_components
 
-# node-waf configuration
+# Node-waf config
 .lock-wscript
 
-# Compiled binary addons (https://nodejs.org/api/addons.html)
+# Compiled addons
 build/Release
 
 # Dependency directories
 node_modules/
 jspm_packages/
 
-# Snowpack dependency directory (https://snowpack.dev/)
+# Snowpack deps
 web_modules/
 
 # TypeScript cache
@@ -62,7 +64,7 @@ web_modules/
 # Output of 'npm pack'
 *.tgz
 
-# Yarn Integrity file
+# Yarn Integrity
 .yarn-integrity
 
 # dotenv environment variable files
@@ -70,7 +72,7 @@ web_modules/
 .env.*
 !.env.example
 
-# parcel-bundler cache (https://parceljs.org/)
+# Parcel cache
 .cache
 .parcel-cache
 
@@ -84,48 +86,45 @@ dist
 
 # Gatsby files
 .cache/
-# Comment in the public line in if your project uses Gatsby and not Next.js
-# https://nextjs.org/blog/next-9-1#public-directory-support
-# public
 
-# vuepress build output
+# Vuepress build output
 .vuepress/dist
 
-# vuepress v2.x temp and cache directory
+# Vuepress v2 temp/cache
 .temp
 .cache
 
-# Sveltekit cache directory
+# Sveltekit cache
 .svelte-kit/
 
-# vitepress build output
+# Vitepress build
 **/.vitepress/dist
 
-# vitepress cache directory
+# Vitepress cache
 **/.vitepress/cache
 
-# Docusaurus cache and generated files
+# Docusaurus cache/generated
 .docusaurus
 
-# Serverless directories
+# Serverless folders
 .serverless/
 
 # FuseBox cache
 .fusebox/
 
-# DynamoDB Local files
+# DynamoDB local
 .dynamodb/
 
-# Firebase cache directory
+# Firebase cache
 .firebase/
 
 # TernJS port file
 .tern-port
 
-# Stores VSCode versions used for testing VSCode extensions
+# VSCode versions for testing
 .vscode-test
 
-# yarn v3
+# Yarn v3
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -137,3 +136,38 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+
+
+# ────────────────────────────────
+# MEAN STACK SPECIFIC (Angular + Express)
+# ────────────────────────────────
+
+# Angular build output
+frontend/dist/
+frontend/.angular/
+frontend/.angular/cache/
+
+# Angular environment files
+frontend/src/environments/*.ts
+
+# If Angular is not in frontend/, uncomment:
+# dist/
+# .angular/
+# src/environments/*.ts
+
+# MongoDB connection files (optional)
+config/keys.js
+config/*.json
+
+
+
+# ────────────────────────────────
+# OS / Editor files
+# ────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# IDE folders
+.vscode/
+.idea/
