@@ -78,7 +78,7 @@ Create a .env file in the backend/ folder based on .env.example:
 
 Copy code
 ```ini
-PORT=5000
+PORT=3000
 MONGO_URI=mongodb://localhost:27017/your_db_name
 JWT_SECRET=your_secret_key
 ```
