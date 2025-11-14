@@ -20,7 +20,7 @@ This is my project for IT340.
 
 ## Project Structure
 ```yaml
-YOUR_REPO_NAME/
+mean_app/
 ├─ backend/ # Express / Node backend
 │ ├─ node_modules/
 │ ├─ routes/
@@ -56,7 +56,7 @@ Installation
 1. Clone the repository
 ```bash
 git clone https://github.com/jwalp/340Project.git
-cd YOUR_REPO_NAME
+cd mean_app
 ```
 2. Install backend dependencies
 ```bash
