@@ -1,1 +1,48 @@
-<p>register works!</p>
+<div class="auth-page">
+  <nav class="navbar">
+    <div class="nav-container">
+      <h1 class="logo"><a routerLink="/">📁 FileVerse</a></h1>
+      <div class="nav-links">
+        <a routerLink="/">Home</a>
+        <a routerLink="/login">Login</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="auth-container">
+    <div class="auth-box">
+      <h2>Create Account</h2>
+      <p class="auth-subtitle">Join FileVerse today!</p>
+
+      <form class="auth-form" (ngSubmit)="onRegister()">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" [(ngModel)]="username" name="username" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" [(ngModel)]="email" name="email" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" [(ngModel)]="password" name="password" required minlength="6">
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <input type="password" id="confirmPassword" [(ngModel)]="confirmPassword" name="confirmPassword" required>
+        </div>
+
+        <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
+
+        <button type="submit" class="btn-primary btn-full">Create Account</button>
+
+        <p class="auth-link">
+          Already have an account? <a routerLink="/login">Login here</a>
+        </p>
+      </form>
+    </div>
+  </main>
+</div>
