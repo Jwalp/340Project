@@ -11,7 +11,7 @@ interface User {
 }
 
 interface AuthResponse {
-  message: string;
+  message?: string;
   token: string;
   user: User;
 }
@@ -24,11 +24,19 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    // Load user from localStorage on initialization
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      this.currentUserSubject.next(JSON.parse(storedUser));
+    }
+  }
 
   register(username: string, email: string, password: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/auth/register`, {
-      username, email, password
+      username, 
+      email, 
+      password
     }).pipe(
       tap((response: AuthResponse) => {
         if (response.token) {
@@ -42,7 +50,8 @@ export class AuthService {
 
   login(email: string, password: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/auth/login`, {
-      email, password
+      email, 
+      password
     }).pipe(
       tap((response: AuthResponse) => {
         if (response.token) {
@@ -66,5 +75,9 @@ export class AuthService {
 
   isLoggedIn(): boolean {
     return !!this.getToken();
+  }
+
+  getCurrentUser(): User | null {
+    return this.currentUserSubject.value;
   }
 }

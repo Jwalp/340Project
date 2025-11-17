@@ -17,7 +17,7 @@ export class DashboardComponent implements OnInit {
     private authService: AuthService,
     private router: Router
   ) {}
-/*
+
   ngOnInit() {
     // Get user from localStorage
     const storedUser = localStorage.getItem('user');
@@ -28,5 +28,4 @@ export class DashboardComponent implements OnInit {
       this.router.navigate(['/login']);
     }
   }
-    */
 }
