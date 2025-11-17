@@ -54,12 +54,16 @@
   margin: 0;
   text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
   font-weight: 700;
+  display: flex;
+  align-items: center;
 }
 
-.logo a {
-  text-decoration: none;
-  color: inherit;
+.logo img {
+  width: 1.4em;
+  height: auto;
+  margin-right: 10px;
 }
+
 
 .nav-links {
   display: flex;
