@@ -17,14 +17,39 @@ export class RegisterComponent {
   password = '';
   confirmPassword = '';
   errorMessage = '';
+  showPasswordRequirements = false;
 
   constructor(private authService: AuthService, private router: Router) {}
+
+  hasUpperCase(): boolean {
+    return /[A-Z]/.test(this.password);
+  }
+
+  hasLowerCase(): boolean {
+    return /[a-z]/.test(this.password);
+  }
+
+  hasNumber(): boolean {
+    return /[0-9]/.test(this.password);
+  }
+
+  isPasswordValid(): boolean {
+    return this.password.length >= 8 && 
+           this.hasUpperCase() && 
+           this.hasLowerCase() && 
+           this.hasNumber();
+  }
 
   onRegister(): void {
     this.errorMessage = '';
     
     if (this.password !== this.confirmPassword) {
       this.errorMessage = 'Passwords do not match';
+      return;
+    }
+
+    if (!this.isPasswordValid()) {
+      this.errorMessage = 'Password does not meet requirements';
       return;
     }
 

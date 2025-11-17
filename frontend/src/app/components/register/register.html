@@ -46,7 +46,7 @@
             minlength="8"
             (focus)="showPasswordRequirements = true"
             #passwordInput="ngModel">
-          <div class="password-requirements" *ngIf="showPasswordRequirements && password.length < 8 || showPasswordRequirements && !hasNumber() || showPasswordRequirements && !hasUpperCase() || showPasswordRequirements && !hasLowerCase()">
+          <div class="password-requirements" *ngIf="showPasswordRequirements && (password.length < 8 || !hasNumber() || !hasUpperCase() || !hasLowerCase())">
             <p class="requirements-title">Password must contain:</p>
             <ul>
               <li [class.valid]="password.length >= 8">✓ At least 8 characters</li>
@@ -76,7 +76,7 @@
         <button 
           type="submit" 
           class="btn-primary btn-full"
-          [disabled]="registerForm.invalid || password !== confirmPassword">
+          [disabled]="registerForm.invalid || password !== confirmPassword || !isPasswordValid()">
           Create Account
         </button>
 
