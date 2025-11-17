@@ -15,11 +15,13 @@ export class LoginComponent {
   email = '';
   password = '';
   errorMessage = '';
+  showPassword = false;
 
   constructor(private authService: AuthService, private router: Router) {}
 
   onLogin(): void {
     this.errorMessage = '';
+    
     this.authService.login(this.email, this.password).subscribe({
       next: (response: any) => {
         console.log('Login successful!', response);
@@ -32,7 +34,6 @@ export class LoginComponent {
   }
 
   onGoogleLogin(): void {
-    // Redirect to backend Google OAuth endpoint
     window.location.href = 'http://localhost:3000/api/auth/google';
   }
 }

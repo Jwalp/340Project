@@ -3,7 +3,6 @@
     <div class="auth-box">
       <h2>Create Account</h2>
       <p class="auth-subtitle">Join FileVerse today!</p>
-
       <form class="auth-form" #registerForm="ngForm" (ngSubmit)="onRegister()">
         <div class="form-group">
           <label for="username">Username</label>
@@ -19,7 +18,7 @@
             Username must be at least 3 characters
           </div>
         </div>
-
+        
         <div class="form-group">
           <label for="email">Email</label>
           <input 
@@ -34,18 +33,28 @@
             Please enter a valid email address
           </div>
         </div>
-
+        
         <div class="form-group">
           <label for="password">Password</label>
-          <input 
-            type="password" 
-            id="password" 
-            [(ngModel)]="password" 
-            name="password" 
-            required 
-            minlength="8"
-            (focus)="showPasswordRequirements = true"
-            #passwordInput="ngModel">
+          <div class="password-input-wrapper">
+            <input 
+              [type]="showPassword ? 'text' : 'password'" 
+              id="password" 
+              [(ngModel)]="password" 
+              name="password" 
+              required 
+              minlength="8"
+              (focus)="showPasswordRequirements = true"
+              #passwordInput="ngModel">
+            <button 
+              type="button" 
+              class="toggle-password" 
+              (click)="showPassword = !showPassword"
+              tabindex="-1"
+              aria-label="Toggle password visibility">
+              <i [class]="showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+            </button>
+          </div>
           <div class="password-requirements" *ngIf="showPasswordRequirements && (password.length < 8 || !hasNumber() || !hasUpperCase() || !hasLowerCase())">
             <p class="requirements-title">Password must contain:</p>
             <ul>
@@ -56,30 +65,40 @@
             </ul>
           </div>
         </div>
-
+        
         <div class="form-group">
           <label for="confirmPassword">Confirm Password</label>
-          <input 
-            type="password" 
-            id="confirmPassword" 
-            [(ngModel)]="confirmPassword" 
-            name="confirmPassword" 
-            required
-            #confirmPasswordInput="ngModel">
+          <div class="password-input-wrapper">
+            <input 
+              [type]="showConfirmPassword ? 'text' : 'password'" 
+              id="confirmPassword" 
+              [(ngModel)]="confirmPassword" 
+              name="confirmPassword" 
+              required
+              #confirmPasswordInput="ngModel">
+            <button 
+              type="button" 
+              class="toggle-password" 
+              (click)="showConfirmPassword = !showConfirmPassword"
+              tabindex="-1"
+              aria-label="Toggle password visibility">
+              <i [class]="showConfirmPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+            </button>
+          </div>
           <div class="validation-message" *ngIf="password !== confirmPassword && confirmPasswordInput.touched">
             Passwords do not match
           </div>
         </div>
-
+        
         <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
-
+        
         <button 
           type="submit" 
           class="btn-primary btn-full"
           [disabled]="registerForm.invalid || password !== confirmPassword || !isPasswordValid()">
           Create Account
         </button>
-
+        
         <p class="auth-link">
           Already have an account? <a routerLink="/login">Login here</a>
         </p>
