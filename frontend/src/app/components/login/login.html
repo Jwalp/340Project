@@ -8,10 +8,10 @@
           <label for="email">Email</label>
           <input type="email" id="email" [(ngModel)]="email" name="email" required>
         </div>
-
+        
         <div class="form-group">
           <label for="password">Password</label>
-          <div class="password-input-wrapper">
+          <div class="password-input-wrapper" (mouseenter)="showPasswordIcon = true" (mouseleave)="showPasswordIcon = false; showPassword = false">
             <input 
               [type]="showPassword ? 'text' : 'password'" 
               id="password" 
@@ -19,23 +19,29 @@
               name="password" 
               required>
             <button 
+              *ngIf="showPasswordIcon && password.length > 0"
               type="button" 
               class="toggle-password" 
-              (click)="showPassword = !showPassword"
-              tabindex="-1">
-              <i [class]="showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+              (mousedown)="showPassword = true"
+              (mouseup)="showPassword = false"
+              (mouseleave)="showPassword = false"
+              (touchstart)="showPassword = true"
+              (touchend)="showPassword = false"
+              tabindex="-1"
+              aria-label="Show password">
+              <i class="fa-solid fa-eye"></i>
             </button>
           </div>
         </div>
-
+        
         <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
-
+        
         <button type="submit" class="btn-primary btn-full">Login</button>
-
+        
         <div class="divider">
           <span>OR</span>
         </div>
-
+        
         <button type="button" class="google-btn" (click)="onGoogleLogin()">
           <svg class="google-icon" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -45,7 +51,7 @@
           </svg>
           Continue with Google
         </button>
-
+        
         <p class="auth-link">
           Don't have an account? <a routerLink="/register">Sign up here</a>
         </p>

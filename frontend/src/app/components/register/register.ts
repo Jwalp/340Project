@@ -20,6 +20,8 @@ export class RegisterComponent {
   showPasswordRequirements = false;
   showPassword = false;
   showConfirmPassword = false;
+  showPasswordIcon = false;
+  showConfirmPasswordIcon = false;
 
   constructor(private authService: AuthService, private router: Router) {}
 

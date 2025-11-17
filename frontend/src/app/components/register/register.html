@@ -36,7 +36,7 @@
         
         <div class="form-group">
           <label for="password">Password</label>
-          <div class="password-input-wrapper">
+          <div class="password-input-wrapper" (mouseenter)="showPasswordIcon = true" (mouseleave)="showPasswordIcon = false; showPassword = false">
             <input 
               [type]="showPassword ? 'text' : 'password'" 
               id="password" 
@@ -47,12 +47,17 @@
               (focus)="showPasswordRequirements = true"
               #passwordInput="ngModel">
             <button 
+              *ngIf="showPasswordIcon && password.length > 0"
               type="button" 
               class="toggle-password" 
-              (click)="showPassword = !showPassword"
+              (mousedown)="showPassword = true"
+              (mouseup)="showPassword = false"
+              (mouseleave)="showPassword = false"
+              (touchstart)="showPassword = true"
+              (touchend)="showPassword = false"
               tabindex="-1"
-              aria-label="Toggle password visibility">
-              <i [class]="showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+              aria-label="Show password">
+              <i class="fa-solid fa-eye"></i>
             </button>
           </div>
           <div class="password-requirements" *ngIf="showPasswordRequirements && (password.length < 8 || !hasNumber() || !hasUpperCase() || !hasLowerCase())">
@@ -68,7 +73,7 @@
         
         <div class="form-group">
           <label for="confirmPassword">Confirm Password</label>
-          <div class="password-input-wrapper">
+          <div class="password-input-wrapper" (mouseenter)="showConfirmPasswordIcon = true" (mouseleave)="showConfirmPasswordIcon = false; showConfirmPassword = false">
             <input 
               [type]="showConfirmPassword ? 'text' : 'password'" 
               id="confirmPassword" 
@@ -77,12 +82,17 @@
               required
               #confirmPasswordInput="ngModel">
             <button 
+              *ngIf="showConfirmPasswordIcon && confirmPassword.length > 0"
               type="button" 
               class="toggle-password" 
-              (click)="showConfirmPassword = !showConfirmPassword"
+              (mousedown)="showConfirmPassword = true"
+              (mouseup)="showConfirmPassword = false"
+              (mouseleave)="showConfirmPassword = false"
+              (touchstart)="showConfirmPassword = true"
+              (touchend)="showConfirmPassword = false"
               tabindex="-1"
-              aria-label="Toggle password visibility">
-              <i [class]="showConfirmPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+              aria-label="Show password">
+              <i class="fa-solid fa-eye"></i>
             </button>
           </div>
           <div class="validation-message" *ngIf="password !== confirmPassword && confirmPasswordInput.touched">
