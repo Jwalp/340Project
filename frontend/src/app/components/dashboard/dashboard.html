@@ -1,0 +1,39 @@
+<div class="dashboard-page">
+  <main class="dashboard-container">
+    <div class="welcome-section">
+      <h1>Welcome to FileVerse, {{ user?.username }}!</h1>
+      <p class="subtitle">Your file management dashboard</p>
+    </div>
+
+    <div class="dashboard-content">
+      <div class="info-card">
+        <h2>📊 Dashboard</h2>
+        <p>This is your main dashboard where you can manage all your files.</p>
+        <div class="user-info">
+          <p><strong>Username:</strong> {{ user?.username }}</p>
+          <p><strong>Email:</strong> {{ user?.email }}</p>
+        </div>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-box">
+          <h3>📁 My Files</h3>
+          <p>View and manage your uploaded files</p>
+          <button class="btn-primary" disabled>Coming Soon</button>
+        </div>
+
+        <div class="feature-box">
+          <h3>⬆️ Upload</h3>
+          <p>Upload new files to your storage</p>
+          <button class="btn-primary" disabled>Coming Soon</button>
+        </div>
+
+        <div class="feature-box">
+          <h3>🔄 Convert</h3>
+          <p>Convert files between formats</p>
+          <button class="btn-primary" disabled>Coming Soon</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
