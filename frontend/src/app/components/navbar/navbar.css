@@ -1,0 +1,99 @@
+.navbar {
+  background: rgba(26, 11, 46, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 255, 136, 0.1);
+  padding: 1rem 0;
+  border-bottom: 2px solid rgba(0, 255, 136, 0.3);
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+}
+
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.8rem;
+  color: #00ff88;
+  margin: 0;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+  font-weight: 700;
+}
+
+.logo a {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+
+.logo img {
+  max-width: 1.4em;
+  height: auto;
+  margin-right: 10px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #fff;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.nav-links a:hover {
+  color: #00ff88;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+/* Override ONLY color for btn-primary in navbar */
+.nav-links .btn-primary {
+  color: #1a0b2e;
+}
+
+.nav-links .btn-primary:hover {
+  color: #1a0b2e;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #00ff88 0%, #00cc6f 100%);
+  color: #1a0b2e;
+  padding: 10px 24px;
+  border-radius: 25px;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+  transition: box-shadow 0.3s, background 0.3s;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 20px rgba(0, 255, 136, 0.5);
+  background: linear-gradient(135deg, #00ff88 0%, #00dd7f 100%);
+}
+
+.btn-outline {
+  border: 2px solid #00ff88;
+  color: #00ff88;
+  padding: 8px 24px;
+  border-radius: 25px;
+  background: transparent;
+  transition: all 0.3s;
+  font-weight: 600;
+}
+
+.btn-outline:hover {
+  background: rgba(0, 255, 136, 0.1);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}

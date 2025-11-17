@@ -1,0 +1,25 @@
+<nav class="navbar">
+  <div class="nav-container">
+    <h1 class="logo">
+      <a routerLink="/">
+        <img src="./FileVerse.png" alt="📁" /> 
+        FileVerse
+      </a>
+    </h1>
+    
+    <!-- Not Logged In -->
+    <div class="nav-links" *ngIf="!isLoggedIn">
+      <a routerLink="/">Home</a>
+      <a routerLink="/login" class="btn-outline">Login</a>
+      <a routerLink="/register" class="btn-primary">Sign Up</a>
+    </div>
+
+    <!-- Logged In -->
+    <div class="nav-links" *ngIf="isLoggedIn">
+      <a routerLink="/">Home</a>
+      <a routerLink="/dashboard">Dashboard</a>
+      <span class="username">👋 {{ username }}</span>
+      <button (click)="logout()" class="btn-outline">Logout</button>
+    </div>
+  </div>
+</nav>
