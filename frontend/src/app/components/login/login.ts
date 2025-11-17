@@ -32,7 +32,7 @@ export class LoginComponent {
   }
 
   onGoogleLogin(): void {
-    // TODO: Implement Google OAuth
-    alert('Google login coming soon! For now, please use email/password.');
+    // Redirect to backend Google OAuth endpoint
+    window.location.href = 'http://localhost:3000/api/auth/google';
   }
 }

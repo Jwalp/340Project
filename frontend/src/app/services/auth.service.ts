@@ -63,6 +63,10 @@ export class AuthService {
     );
   }
 
+  setCurrentUser(user: User): void {
+    this.currentUserSubject.next(user);
+  }
+
   logout(): void {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

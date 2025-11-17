@@ -3,6 +3,8 @@ const router = express.Router();
 const { body } = require('express-validator');
 const { register, login, getMe } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
+const passport = require('passport');
+const jwt = require('jsonwebtoken');
 
 // Validation rules
 const registerValidation = [
@@ -16,8 +18,14 @@ const registerValidation = [
     .normalizeEmail()
     .withMessage('Please provide a valid email'),
   body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(/[A-Z]/)
+    .withMessage('Password must contain at least one uppercase letter')
+    .matches(/[a-z]/)
+    .withMessage('Password must contain at least one lowercase letter')
+    .matches(/[0-9]/)
+    .withMessage('Password must contain at least one number')
 ];
 
 const loginValidation = [
@@ -31,9 +39,56 @@ const loginValidation = [
     .withMessage('Password is required')
 ];
 
-// Routes
+// Regular routes
 router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
 router.get('/me', protect, getMe);
+
+// Google OAuth routes
+router.get('/google',
+  passport.authenticate('google', { 
+    scope: ['profile', 'email'],
+    session: false
+  })
+);
+
+router.get('/google/callback',
+  passport.authenticate('google', { 
+    failureRedirect: `${process.env.FRONTEND_URL}/login?error=auth_failed`,
+    session: false
+  }),
+  (req, res) => {
+    try {
+      // Create JWT token
+      const payload = {
+        id: req.user._id
+      };
+
+      jwt.sign(
+        payload,
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRE },
+        (err, token) => {
+          if (err) {
+            console.error('JWT sign error:', err);
+            return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+          }
+
+          // Redirect to frontend with token
+          const userData = encodeURIComponent(JSON.stringify({
+            id: req.user._id,
+            username: req.user.username,
+            email: req.user.email
+          }));
+          
+          res.redirect(`${process.env.FRONTEND_URL}?token=${token}&user=${userData}`);
+        }
+      );
+    } catch (error) {
+      console.error('Callback error:', error);
+      res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+    }
+  }
+);
 
 module.exports = router;

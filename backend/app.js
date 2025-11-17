@@ -5,6 +5,7 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const cors = require('cors');
+const passport = require('./config/passport');
 const connectDB = require('./config/database');
 
 // Import routes
@@ -22,6 +23,9 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:4200',
   credentials: true
 }));
+
+// Passport middleware (without sessions - using JWT only)
+app.use(passport.initialize());
 
 // View engine setup
 app.set('views', path.join(__dirname, 'views'));
