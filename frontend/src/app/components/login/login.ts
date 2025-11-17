@@ -30,4 +30,9 @@ export class LoginComponent {
       }
     });
   }
+
+  onGoogleLogin(): void {
+    // TODO: Implement Google OAuth
+    alert('Google login coming soon! For now, please use email/password.');
+  }
 }
