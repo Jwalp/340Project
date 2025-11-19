@@ -6,7 +6,8 @@ const {
   login, 
   getMe, 
   forgotPassword, 
-  resetPassword 
+  resetPassword,
+  validateResetToken 
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const passport = require('passport');
@@ -70,6 +71,7 @@ router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
 router.get('/me', protect, getMe);
 router.post('/forgot-password', forgotPasswordValidation, forgotPassword);
+router.get('/validate-reset-token/:resetToken', validateResetToken);
 router.put('/reset-password/:resetToken', resetPasswordValidation, resetPassword);
 
 // Google OAuth routes

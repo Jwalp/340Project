@@ -246,3 +246,47 @@ exports.resetPassword = async (req, res) => {
     });
   }
 };
+
+exports.validateResetToken = async (req, res) => {
+  // Get hashed token
+  const resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(req.params.resetToken)
+    .digest('hex');
+
+  console.log('Validating token...');
+  console.log('Plain token from URL:', req.params.resetToken);
+  console.log('Hashed token to search:', resetPasswordToken);
+  console.log('Current time:', new Date());
+
+  try {
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    console.log('User found:', !!user);
+    if (user) {
+      console.log('Token in DB:', user.resetPasswordToken);
+      console.log('Token expires:', user.resetPasswordExpire);
+    }
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Token is valid'
+    });
+  } catch (error) {
+    console.error('Validate token error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};

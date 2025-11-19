@@ -17,6 +17,8 @@ export class ResetPasswordComponent implements OnInit {
   errorMessage = '';
   successMessage = '';
   isSubmitting = false;
+  isValidatingToken = true;
+  tokenIsValid = false;
   token = '';
   showPasswordRequirements = false;
   showPassword = false;
@@ -34,8 +36,32 @@ export class ResetPasswordComponent implements OnInit {
     // Get token from query params
     this.route.queryParams.subscribe(params => {
       this.token = params['token'];
+      console.log('Reset token received:', this.token);
+      
       if (!this.token) {
         this.errorMessage = 'Invalid or missing reset token';
+        this.isValidatingToken = false;
+        this.tokenIsValid = false;
+      } else {
+        // Validate the token by attempting to check it with backend
+        this.validateToken();
+      }
+    });
+  }
+
+  validateToken(): void {
+    // Validate the token with the backend
+    this.authService.validateResetToken(this.token).subscribe({
+      next: (response: any) => {
+        console.log('Token is valid');
+        this.isValidatingToken = false;
+        this.tokenIsValid = true;
+      },
+      error: (error: any) => {
+        console.error('Token validation failed:', error);
+        this.errorMessage = error.error?.message || 'This password reset link is invalid or has expired.';
+        this.isValidatingToken = false;
+        this.tokenIsValid = false;
       }
     });
   }
@@ -90,6 +116,7 @@ export class ResetPasswordComponent implements OnInit {
       error: (error: any) => {
         this.errorMessage = error.error?.message || 'Failed to reset password. The link may be invalid or expired.';
         this.isSubmitting = false;
+        this.tokenIsValid = false;
       }
     });
   }
