@@ -71,6 +71,20 @@ export class AuthService {
     return this.http.post<MessageResponse>(`${this.apiUrl}/auth/forgot-password`, { email });
   }
 
+  resetPassword(token: string, password: string): Observable<AuthResponse> {
+    return this.http.put<AuthResponse>(`${this.apiUrl}/auth/reset-password/${token}`, {
+      password
+    }).pipe(
+      tap((response: AuthResponse) => {
+        if (response.token) {
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('user', JSON.stringify(response.user));
+          this.currentUserSubject.next(response.user);
+        }
+      })
+    );
+  }
+
   setCurrentUser(user: User): void {
     this.currentUserSubject.next(user);
   }
