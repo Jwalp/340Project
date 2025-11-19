@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const { register, login, getMe } = require('../controllers/authController');
+const { 
+  register, 
+  login, 
+  getMe, 
+  forgotPassword, 
+  resetPassword 
+} = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
@@ -39,10 +45,32 @@ const loginValidation = [
     .withMessage('Password is required')
 ];
 
+const forgotPasswordValidation = [
+  body('email')
+    .trim()
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email')
+];
+
+const resetPasswordValidation = [
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(/[A-Z]/)
+    .withMessage('Password must contain at least one uppercase letter')
+    .matches(/[a-z]/)
+    .withMessage('Password must contain at least one lowercase letter')
+    .matches(/[0-9]/)
+    .withMessage('Password must contain at least one number')
+];
+
 // Regular routes
 router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
 router.get('/me', protect, getMe);
+router.post('/forgot-password', forgotPasswordValidation, forgotPassword);
+router.put('/reset-password/:resetToken', resetPasswordValidation, resetPassword);
 
 // Google OAuth routes
 router.get('/google',
@@ -59,7 +87,6 @@ router.get('/google/callback',
   }),
   (req, res) => {
     try {
-      // Create JWT token
       const payload = {
         id: req.user._id
       };
@@ -74,7 +101,6 @@ router.get('/google/callback',
             return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
           }
 
-          // Redirect to frontend with token
           const userData = encodeURIComponent(JSON.stringify({
             id: req.user._id,
             username: req.user.username,
