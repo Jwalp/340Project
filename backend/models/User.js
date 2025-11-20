@@ -31,7 +31,19 @@ const userSchema = new mongoose.Schema({
   googleId: {
     type: String,
     unique: true,
-    sparse: true  // Allows null values for non-Google users
+    sparse: true
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    type: String,
+    select: false
+  },
+  emailVerificationExpire: {
+    type: Date,
+    select: false
   },
   resetPasswordToken: {
     type: String,
@@ -79,6 +91,23 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   } catch (error) {
     throw error;
   }
+};
+
+// Generate email verification token
+userSchema.methods.getEmailVerificationToken = function() {
+  // Generate token
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+
+  // Hash token and set to emailVerificationToken field
+  this.emailVerificationToken = crypto
+    .createHash('sha256')
+    .update(verificationToken)
+    .digest('hex');
+
+  // Set expire time (24 hours)
+  this.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000;
+
+  return verificationToken;
 };
 
 // Generate password reset token

@@ -16,9 +16,10 @@ passport.use(
         let user = await User.findOne({ email: profile.emails[0].value });
 
         if (user) {
-          // User exists, update googleId if not set
+          // User exists, update googleId if not set and mark as verified
           if (!user.googleId) {
             user.googleId = profile.id;
+            user.isEmailVerified = true; // Mark as verified for Google users
             await user.save();
           }
           return done(null, user);
@@ -33,7 +34,8 @@ passport.use(
           username: profile.displayName.replace(/\s+/g, '_').toLowerCase() + Math.floor(Math.random() * 1000),
           email: profile.emails[0].value,
           password: hashedPassword,
-          googleId: profile.id
+          googleId: profile.id,
+          isEmailVerified: true // Google users are automatically verified
         });
 
         done(null, user);
@@ -44,8 +46,5 @@ passport.use(
     }
   )
 );
-
-// Remove these if you're using session: false
-// passport.serializeUser and deserializeUser are NOT needed for JWT-only auth
 
 module.exports = passport;

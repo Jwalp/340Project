@@ -44,7 +44,7 @@ export class RegisterComponent {
            this.hasNumber();
   }
 
-  onRegister(): void {
+   onRegister(): void {
     this.errorMessage = '';
     
     if (this.password !== this.confirmPassword) {
@@ -60,6 +60,7 @@ export class RegisterComponent {
     this.authService.register(this.username, this.email, this.password).subscribe({
       next: (response: any) => {
         console.log('Registration successful!', response);
+        alert('Registration successful! Please check your email to verify your account.');
         this.router.navigate(['/login']);
       },
       error: (error: any) => {

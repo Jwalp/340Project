@@ -14,10 +14,12 @@ interface AuthResponse {
   message?: string;
   token: string;
   user: User;
+  requiresVerification?: boolean;
 }
 
 interface MessageResponse {
   message: string;
+  requiresVerification?: boolean;
 }
 
 @Injectable({
@@ -36,20 +38,12 @@ export class AuthService {
     }
   }
 
-  register(username: string, email: string, password: string): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiUrl}/auth/register`, {
+  register(username: string, email: string, password: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.apiUrl}/auth/register`, {
       username, 
       email, 
       password
-    }).pipe(
-      tap((response: AuthResponse) => {
-        if (response.token) {
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('user', JSON.stringify(response.user));
-          this.currentUserSubject.next(response.user);
-        }
-      })
-    );
+    });
   }
 
   login(email: string, password: string): Observable<AuthResponse> {
@@ -65,6 +59,22 @@ export class AuthService {
         }
       })
     );
+  }
+
+  verifyEmail(token: string): Observable<AuthResponse> {
+    return this.http.get<AuthResponse>(`${this.apiUrl}/auth/verify-email/${token}`).pipe(
+      tap((response: AuthResponse) => {
+        if (response.token) {
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('user', JSON.stringify(response.user));
+          this.currentUserSubject.next(response.user);
+        }
+      })
+    );
+  }
+
+  resendVerification(email: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.apiUrl}/auth/resend-verification`, { email });
   }
 
   forgotPassword(email: string): Observable<MessageResponse> {
