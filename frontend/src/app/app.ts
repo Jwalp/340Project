@@ -1,14 +1,17 @@
+// frontend/src/app/app.ts
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet, Router, ActivatedRoute } from '@angular/router';
 import { NavbarComponent } from './components/navbar/navbar';
+import { ToastComponent } from './components/toast/toast.component';
 import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent],
+  imports: [RouterOutlet, NavbarComponent, ToastComponent],
   template: `
     <app-navbar></app-navbar>
+    <app-toast></app-toast>
     <router-outlet></router-outlet>
   `,
   styleUrls: ['./app.css']

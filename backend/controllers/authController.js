@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
-const { sendPasswordResetEmail } = require('../services/emailService');
+const { sendPasswordResetEmail, sendVerificationEmail } = require('../services/emailService');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -41,11 +41,92 @@ exports.register = async (req, res) => {
       password
     });
 
+    // Generate email verification token
+    const verificationToken = user.getEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
+
+    // Send verification email
+    try {
+      await sendVerificationEmail(user.email, verificationToken);
+      
+      res.status(201).json({
+        success: true,
+        message: 'Registration successful! Please check your email to verify your account.',
+        requiresVerification: true
+      });
+    } catch (emailError) {
+      console.error('Email send error:', emailError);
+      
+      // Clear verification token if email fails
+      user.emailVerificationToken = undefined;
+      user.emailVerificationExpire = undefined;
+      await user.save({ validateBeforeSave: false });
+
+      // Still create account but warn about email
+      const token = generateToken(user._id);
+      
+      res.status(201).json({
+        success: true,
+        message: 'Account created but verification email could not be sent. You can still log in.',
+        token,
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during registration'
+    });
+  }
+};
+
+exports.verifyEmail = async (req, res) => {
+  let verificationToken = req.params.token;
+
+  if (!verificationToken) {
+    return res.status(400).json({
+      success: false,
+      message: 'Verification token is required'
+    });
+  }
+
+  verificationToken = decodeURIComponent(verificationToken);
+
+  const emailVerificationToken = crypto
+    .createHash('sha256')
+    .update(verificationToken)
+    .digest('hex');
+
+  try {
+    const user = await User.findOne({
+      emailVerificationToken,
+      emailVerificationExpire: { $gt: Date.now() }
+    }).select('+emailVerificationToken +emailVerificationExpire');
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification token'
+      });
+    }
+
+    // Mark email as verified
+    user.isEmailVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpire = undefined;
+    await user.save();
+
+    // Generate JWT token
     const token = generateToken(user._id);
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'Email verified successfully',
       token,
       user: {
         id: user._id,
@@ -54,10 +135,62 @@ exports.register = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Verify email error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during registration'
+      message: 'Server error'
+    });
+  }
+};
+
+exports.resendVerification = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with that email address'
+      });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is already verified'
+      });
+    }
+
+    // Generate new verification token
+    const verificationToken = user.getEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
+
+    try {
+      await sendVerificationEmail(user.email, verificationToken);
+
+      res.status(200).json({
+        success: true,
+        message: 'Verification email sent'
+      });
+    } catch (error) {
+      console.error('Email send error:', error);
+      
+      user.emailVerificationToken = undefined;
+      user.emailVerificationExpire = undefined;
+      await user.save({ validateBeforeSave: false });
+
+      return res.status(500).json({
+        success: false,
+        message: 'Email could not be sent. Please try again later.'
+      });
+    }
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
     });
   }
 };

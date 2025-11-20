@@ -7,7 +7,9 @@ const {
   getMe, 
   forgotPassword, 
   resetPassword,
-  validateResetToken 
+  validateResetToken,
+  verifyEmail,
+  resendVerification
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const passport = require('passport');
@@ -70,6 +72,12 @@ const resetPasswordValidation = [
 router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
 router.get('/me', protect, getMe);
+
+// Email verification routes
+router.get('/verify-email/:token', verifyEmail);
+router.post('/resend-verification', forgotPasswordValidation, resendVerification);
+
+// Password reset routes
 router.post('/forgot-password', forgotPasswordValidation, forgotPassword);
 router.get('/validate-reset-token/:resetToken', validateResetToken);
 router.put('/reset-password/:resetToken', resetPasswordValidation, resetPassword);

@@ -1,8 +1,10 @@
+// frontend/src/app/components/register/register.ts
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-register',
@@ -23,7 +25,11 @@ export class RegisterComponent {
   showPasswordIcon = false;
   showConfirmPasswordIcon = false;
 
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService, 
+    private router: Router,
+    private toastService: ToastService
+  ) {}
 
   hasUpperCase(): boolean {
     return /[A-Z]/.test(this.password);
@@ -44,7 +50,7 @@ export class RegisterComponent {
            this.hasNumber();
   }
 
-   onRegister(): void {
+  onRegister(): void {
     this.errorMessage = '';
     
     if (this.password !== this.confirmPassword) {
@@ -60,11 +66,14 @@ export class RegisterComponent {
     this.authService.register(this.username, this.email, this.password).subscribe({
       next: (response: any) => {
         console.log('Registration successful!', response);
-        alert('Registration successful! Please check your email to verify your account.');
-        this.router.navigate(['/login']);
+        this.toastService.success('Registration successful! Please check your email to verify your account.', 7000);
+        setTimeout(() => {
+          this.router.navigate(['/login']);
+        }, 1500);
       },
       error: (error: any) => {
         this.errorMessage = error.error?.message || 'Registration failed';
+        this.toastService.error(this.errorMessage);
       }
     });
   }
