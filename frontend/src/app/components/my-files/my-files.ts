@@ -4,11 +4,12 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FileService, FileData } from '../../services/file.service';
 import { ToastService } from '../../services/toast.service';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-my-files',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './my-files.html',
   styleUrls: ['./my-files.css']
 })
