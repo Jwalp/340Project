@@ -37,6 +37,14 @@
         
         <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
         
+        <!-- Show resend verification link if error is about unverified email -->
+        <div *ngIf="errorMessage && errorMessage.includes('verify')" class="verification-help">
+          <p>Didn't receive the verification email?</p>
+          <button type="button" class="resend-link" (click)="goToResendVerification()">
+            Click here to resend verification email
+          </button>
+        </div>
+        
         <button type="submit" class="btn-primary btn-full">Login</button>
         
         <div class="divider">

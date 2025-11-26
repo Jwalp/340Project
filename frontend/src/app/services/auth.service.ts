@@ -1,3 +1,4 @@
+// frontend/src/app/services/auth.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
@@ -11,13 +12,15 @@ interface User {
 }
 
 interface AuthResponse {
+  success: boolean;
   message?: string;
-  token: string;
-  user: User;
+  token?: string;
+  user?: User;
   requiresVerification?: boolean;
 }
 
 interface MessageResponse {
+  success: boolean;
   message: string;
   requiresVerification?: boolean;
 }
@@ -52,7 +55,8 @@ export class AuthService {
       password
     }).pipe(
       tap((response: AuthResponse) => {
-        if (response.token) {
+        // Only store token/user if email is verified (no requiresVerification flag)
+        if (response.token && response.user && !response.requiresVerification) {
           localStorage.setItem('token', response.token);
           localStorage.setItem('user', JSON.stringify(response.user));
           this.currentUserSubject.next(response.user);
@@ -64,7 +68,7 @@ export class AuthService {
   verifyEmail(token: string): Observable<AuthResponse> {
     return this.http.get<AuthResponse>(`${this.apiUrl}/auth/verify-email/${token}`).pipe(
       tap((response: AuthResponse) => {
-        if (response.token) {
+        if (response.token && response.user) {
           localStorage.setItem('token', response.token);
           localStorage.setItem('user', JSON.stringify(response.user));
           this.currentUserSubject.next(response.user);
@@ -90,7 +94,7 @@ export class AuthService {
       password
     }).pipe(
       tap((response: AuthResponse) => {
-        if (response.token) {
+        if (response.token && response.user) {
           localStorage.setItem('token', response.token);
           localStorage.setItem('user', JSON.stringify(response.user));
           this.currentUserSubject.next(response.user);

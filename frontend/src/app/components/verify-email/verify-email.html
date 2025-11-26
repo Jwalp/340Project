@@ -1,0 +1,38 @@
+<div class="auth-page">
+  <main class="auth-container">
+    <div class="auth-box">
+      <div *ngIf="isVerifying" class="verification-content">
+        <div class="verification-icon">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+        </div>
+        <h2>Verifying Your Email</h2>
+        <p class="auth-subtitle">Please wait while we verify your email address...</p>
+      </div>
+
+      <div *ngIf="!isVerifying && verificationSuccess" class="verification-content">
+        <div class="verification-icon success">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h2>Email Verified!</h2>
+        <p class="auth-subtitle">Your email has been successfully verified. Redirecting to dashboard...</p>
+      </div>
+
+      <div *ngIf="!isVerifying && !verificationSuccess" class="verification-content">
+        <div class="verification-icon error">
+          <i class="fa-solid fa-circle-exclamation"></i>
+        </div>
+        <h2>Verification Failed</h2>
+        <p class="auth-subtitle error-text">{{ errorMessage }}</p>
+        
+        <div class="verification-actions">
+          <button class="btn-primary" (click)="resendVerification()">
+            Request New Verification Link
+          </button>
+          <p class="auth-link">
+            <a routerLink="/login">Back to login</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

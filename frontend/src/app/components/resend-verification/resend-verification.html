@@ -1,0 +1,50 @@
+<div class="auth-page">
+  <main class="auth-container">
+    <div class="auth-box">
+      <button class="back-button" (click)="goBack()" aria-label="Go back">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      
+      <h2>Verify Your Email</h2>
+      <p class="auth-subtitle">Please enter your email address to receive a verification link.</p>
+      
+      <form class="auth-form" (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input 
+            type="email" 
+            id="email" 
+            [(ngModel)]="email" 
+            name="email" 
+            placeholder="your.email@example.com"
+            required
+            [disabled]="isSubmitting">
+        </div>
+
+        <div *ngIf="errorMessage" class="error-message">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          {{ errorMessage }}
+        </div>
+
+        <div *ngIf="successMessage" class="success-message">
+          <i class="fa-solid fa-circle-check"></i>
+          {{ successMessage }}
+        </div>
+
+        <button 
+          type="submit" 
+          class="btn-primary btn-full" 
+          [disabled]="isSubmitting">
+          <span *ngIf="!isSubmitting">Send Verification Email</span>
+          <span *ngIf="isSubmitting">
+            <i class="fa-solid fa-spinner fa-spin"></i> Sending...
+          </span>
+        </button>
+
+        <p class="auth-link">
+          Already verified? <a routerLink="/login">Back to login</a>
+        </p>
+      </form>
+    </div>
+  </main>
+</div>

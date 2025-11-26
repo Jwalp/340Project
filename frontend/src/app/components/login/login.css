@@ -1,3 +1,4 @@
+/* frontend/src/app/components/login/login.css */
 .auth-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #1a0b2e 0%, #2d1b4e 50%, #1a0b2e 100%);
@@ -258,6 +259,37 @@
 }
 
 .auth-link a:hover {
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+.verification-help {
+  background: rgba(255, 165, 0, 0.1);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-radius: 10px;
+  padding: 15px;
+  text-align: center;
+}
+
+.verification-help p {
+  color: #b8b8d4;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+}
+
+.resend-link {
+  background: none;
+  border: none;
+  color: #00ff88;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.3s;
+  padding: 0;
+}
+
+.resend-link:hover {
+  color: #00dd7f;
   text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
 }
 

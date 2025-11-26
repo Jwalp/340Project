@@ -1,3 +1,4 @@
+// backend/routes/auth.js
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
@@ -97,6 +98,8 @@ router.get('/google/callback',
   }),
   (req, res) => {
     try {
+      console.log('Google OAuth callback successful for user:', req.user.email);
+      
       const payload = {
         id: req.user._id
       };
@@ -111,6 +114,8 @@ router.get('/google/callback',
             return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
           }
 
+          console.log('JWT token generated, redirecting to frontend with user data');
+          
           const userData = encodeURIComponent(JSON.stringify({
             id: req.user._id,
             username: req.user.username,

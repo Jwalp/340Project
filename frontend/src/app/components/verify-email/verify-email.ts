@@ -1,7 +1,9 @@
+// frontend/src/app/components/verify-email/verify-email.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-verify-email',
@@ -19,7 +21,8 @@ export class VerifyEmailComponent implements OnInit {
   constructor(
     private authService: AuthService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private toastService: ToastService
   ) {}
 
   ngOnInit() {
@@ -32,6 +35,7 @@ export class VerifyEmailComponent implements OnInit {
         this.errorMessage = 'Invalid or missing verification token';
         this.isVerifying = false;
         this.verificationSuccess = false;
+        this.toastService.error('Invalid or missing verification token');
       } else {
         this.verifyEmail();
       }
@@ -44,6 +48,7 @@ export class VerifyEmailComponent implements OnInit {
         console.log('Email verified successfully');
         this.isVerifying = false;
         this.verificationSuccess = true;
+        this.toastService.success('Email verified successfully! Redirecting to dashboard...', 3000);
         
         // Redirect to dashboard after 3 seconds
         setTimeout(() => {
@@ -52,9 +57,11 @@ export class VerifyEmailComponent implements OnInit {
       },
       error: (error: any) => {
         console.error('Email verification failed:', error);
-        this.errorMessage = error.error?.message || 'Email verification failed. The link may be invalid or expired.';
+        const message = error.error?.message || 'Email verification failed. The link may be invalid or expired.';
+        this.errorMessage = message;
         this.isVerifying = false;
         this.verificationSuccess = false;
+        this.toastService.error(message);
       }
     });
   }
