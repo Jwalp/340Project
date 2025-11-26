@@ -1,1 +1,113 @@
-<p>my-files works!</p>
+<!-- frontend/src/app/components/my-files/my-files.html -->
+<div class="files-page">
+  <main class="files-container">
+    <div class="files-header">
+      <h1>📁 My Files</h1>
+      <p class="subtitle">Manage all your uploaded files</p>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="toolbar">
+      <div class="search-box">
+        <i class="fa-solid fa-search"></i>
+        <input type="text" 
+               placeholder="Search files..." 
+               (input)="onSearchChange($event)"
+               [(ngModel)]="searchQuery">
+      </div>
+      <a routerLink="/upload" class="btn-primary">
+        <i class="fa-solid fa-plus"></i>
+        Upload Files
+      </a>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="category-tabs">
+      <button class="tab" 
+              [class.active]="selectedCategory === 'all'"
+              (click)="selectCategory('all')">
+        <span class="tab-icon">📁</span>
+        <span class="tab-text">All Files</span>
+        <span class="tab-count">{{ files.length }}</span>
+      </button>
+      <button class="tab" 
+              [class.active]="selectedCategory === 'document'"
+              (click)="selectCategory('document')">
+        <span class="tab-icon">📄</span>
+        <span class="tab-text">Documents</span>
+        <span class="tab-count">{{ getFilesByCategory('document').length }}</span>
+      </button>
+      <button class="tab" 
+              [class.active]="selectedCategory === 'image'"
+              (click)="selectCategory('image')">
+        <span class="tab-icon">🖼️</span>
+        <span class="tab-text">Images</span>
+        <span class="tab-count">{{ getFilesByCategory('image').length }}</span>
+      </button>
+      <button class="tab" 
+              [class.active]="selectedCategory === 'audio'"
+              (click)="selectCategory('audio')">
+        <span class="tab-icon">🎵</span>
+        <span class="tab-text">Audio</span>
+        <span class="tab-count">{{ getFilesByCategory('audio').length }}</span>
+      </button>
+      <button class="tab" 
+              [class.active]="selectedCategory === 'video'"
+              (click)="selectCategory('video')">
+        <span class="tab-icon">🎬</span>
+        <span class="tab-text">Video</span>
+        <span class="tab-count">{{ getFilesByCategory('video').length }}</span>
+      </button>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="loading-state">
+      <i class="fa-solid fa-spinner fa-spin"></i>
+      <p>Loading your files...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!isLoading && filteredFiles.length === 0" class="empty-state">
+      <i class="fa-solid fa-folder-open"></i>
+      <h3>No files found</h3>
+      <p *ngIf="selectedCategory === 'all' && !searchQuery">Upload your first file to get started</p>
+      <p *ngIf="selectedCategory !== 'all'">No {{ selectedCategory }} files yet</p>
+      <p *ngIf="searchQuery">Try a different search term</p>
+      <a routerLink="/upload" class="btn-primary" *ngIf="!searchQuery">
+        <i class="fa-solid fa-plus"></i>
+        Upload Files
+      </a>
+    </div>
+
+    <!-- Files Grid -->
+    <div *ngIf="!isLoading && filteredFiles.length > 0" class="files-grid">
+      <div class="file-card" *ngFor="let file of filteredFiles">
+        <div class="file-icon-container">
+          <i class="fa-solid {{ getFileIcon(file.fileType) }} file-icon"></i>
+          <span class="file-type-badge">{{ file.fileType }}</span>
+        </div>
+        
+        <div class="file-info">
+          <h3 class="file-name" [title]="file.filename">{{ file.filename }}</h3>
+          <div class="file-meta">
+            <span class="file-size">{{ formatFileSize(file.size) }}</span>
+            <span class="file-date">{{ formatDate(file.uploadDate) }}</span>
+          </div>
+        </div>
+
+        <div class="file-actions">
+          <button class="action-btn download-btn" 
+                  (click)="downloadFile(file)"
+                  title="Download">
+            <i class="fa-solid fa-download"></i>
+          </button>
+          <button class="action-btn delete-btn" 
+                  (click)="deleteFile(file)"
+                  title="Delete">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

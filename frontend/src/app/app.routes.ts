@@ -1,3 +1,4 @@
+// frontend/src/app/app.routes.ts
 import { Routes } from '@angular/router';
 import { HomeComponent } from './components/home/home';
 import { LoginComponent } from './components/login/login';
@@ -8,6 +9,8 @@ import { ResetPasswordComponent } from './components/reset-password/reset-passwo
 import { VerifyEmailComponent } from './components/verify-email/verify-email';
 import { ResendVerificationComponent } from './components/resend-verification/resend-verification';
 import { SettingsComponent } from './components/settings/settings';
+import { UploadComponent } from './components/upload/upload';
+import { MyFilesComponent } from './components/my-files/my-files';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -18,5 +21,7 @@ export const routes: Routes = [
   { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'verify-email', component: VerifyEmailComponent },
   { path: 'resend-verification', component: ResendVerificationComponent },
-  { path: 'settings', component: SettingsComponent }
+  { path: 'settings', component: SettingsComponent },
+  { path: 'upload', component: UploadComponent },
+  { path: 'my-files', component: MyFilesComponent }
 ];

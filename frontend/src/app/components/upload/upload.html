@@ -1,1 +1,100 @@
-<p>upload works!</p>
+<!-- frontend/src/app/components/upload/upload.html -->
+<div class="upload-page">
+  <main class="upload-container">
+    <div class="upload-header">
+      <h1>📤 Upload Files</h1>
+      <p class="subtitle">Upload your documents, images, audio, and video files</p>
+    </div>
+
+    <!-- Drop Zone -->
+    <div class="drop-zone"
+         [class.dragging]="isDragging"
+         (dragover)="onDragOver($event)"
+         (dragleave)="onDragLeave($event)"
+         (drop)="onDrop($event)"
+         (click)="fileInput.click()">
+      <input type="file" 
+             #fileInput 
+             multiple 
+             (change)="onFileSelect($event)"
+             style="display: none">
+      
+      <div class="drop-zone-content">
+        <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+        <h3>Drag and drop files here</h3>
+        <p>or click to browse</p>
+        <div class="file-types">
+          <span class="type-badge">📄 Documents</span>
+          <span class="type-badge">🖼️ Images</span>
+          <span class="type-badge">🎵 Audio</span>
+          <span class="type-badge">🎬 Video</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Uploading Files -->
+    <div class="uploading-section" *ngIf="uploadingFiles.length > 0">
+      <h2>Uploading Files</h2>
+      <div class="uploading-list">
+        <div class="uploading-item" *ngFor="let item of uploadingFiles">
+          <div class="file-info">
+            <i class="fa-solid {{ getFileIcon(item.file) }} file-icon"></i>
+            <div class="file-details">
+              <p class="file-name">{{ item.file.name }}</p>
+              <p class="file-size">{{ formatFileSize(item.file.size) }}</p>
+            </div>
+          </div>
+          
+          <div class="upload-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="item.progress"></div>
+            </div>
+            <span class="progress-text" *ngIf="!item.error">{{ item.progress }}%</span>
+            <span class="error-text" *ngIf="item.error">{{ item.error }}</span>
+          </div>
+
+          <button class="cancel-btn" 
+                  (click)="cancelUpload(item)"
+                  *ngIf="item.progress < 100">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supported Formats -->
+    <div class="supported-formats">
+      <h3>Supported File Types</h3>
+      <div class="format-grid">
+        <div class="format-card">
+          <i class="fa-solid fa-file-lines"></i>
+          <h4>Documents</h4>
+          <p>PDF, Word, Excel, PowerPoint, Text, Markdown, HTML, RTF, ODT, EPUB, CSV, XML, JSON</p>
+        </div>
+        <div class="format-card">
+          <i class="fa-solid fa-file-image"></i>
+          <h4>Images</h4>
+          <p>JPG, PNG, GIF, WebP, SVG, BMP, HEIC</p>
+        </div>
+        <div class="format-card">
+          <i class="fa-solid fa-file-audio"></i>
+          <h4>Audio</h4>
+          <p>MP3, WAV, OGG, AAC, FLAC, M4A</p>
+        </div>
+        <div class="format-card">
+          <i class="fa-solid fa-file-video"></i>
+          <h4>Video</h4>
+          <p>MP4, MOV, AVI, MKV, WebM, MPEG, FLV</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <a routerLink="/my-files" class="btn-primary">
+        <i class="fa-solid fa-folder-open"></i>
+        View My Files
+      </a>
+    </div>
+  </main>
+</div>

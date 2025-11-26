@@ -12,6 +12,7 @@ const connectDB = require('./config/database');
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 const authRouter = require('./routes/auth');
+const filesRouter = require('./routes/files');
 
 // Connect to MongoDB
 connectDB();
@@ -58,5 +59,7 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
+app.use('/api/files', filesRouter);
 
 module.exports = app;
