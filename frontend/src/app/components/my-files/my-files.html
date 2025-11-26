@@ -1,4 +1,3 @@
-<!-- frontend/src/app/components/my-files/my-files.html -->
 <div class="files-page">
   <main class="files-container">
     <div class="files-header">
@@ -92,15 +91,29 @@
           <div class="file-meta">
             <span class="file-size">{{ formatFileSize(file.size) }}</span>
             <span class="file-date">{{ formatDate(file.uploadDate) }}</span>
+            <!-- Keep Status Display -->
+            <span class="file-status" [class.permanent]="file.keepPermanently" [class.temporary]="!file.keepPermanently">
+              <i class="fa-solid" [ngClass]="file.keepPermanently ? 'fa-lock' : 'fa-clock'"></i>
+              {{ file.keepPermanently ? 'Permanent' : getTimeRemaining(file.purgeAt) }}
+            </span>
           </div>
         </div>
 
         <div class="file-actions">
+          <!-- Keep Toggle Button -->
+          <button class="action-btn keep-btn" 
+                  [class.active]="file.keepPermanently"
+                  (click)="toggleKeepStatus(file)"
+                  [title]="file.keepPermanently ? 'Set to auto-delete' : 'Keep permanently'">
+            <i class="fa-solid" [ngClass]="file.keepPermanently ? 'fa-lock' : 'fa-lock-open'"></i>
+          </button>
+          
           <button class="action-btn download-btn" 
                   (click)="downloadFile(file)"
                   title="Download">
             <i class="fa-solid fa-download"></i>
           </button>
+          
           <button class="action-btn delete-btn" 
                   (click)="deleteFile(file)"
                   title="Delete">

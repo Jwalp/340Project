@@ -1,5 +1,4 @@
-// frontend/src/app/components/my-files/my-files.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FileService, FileData } from '../../services/file.service';
@@ -13,12 +12,13 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './my-files.html',
   styleUrls: ['./my-files.css']
 })
-export class MyFilesComponent implements OnInit {
+export class MyFilesComponent implements OnInit, OnDestroy {
   files: FileData[] = [];
   filteredFiles: FileData[] = [];
   isLoading = true;
   selectedCategory: 'all' | 'document' | 'image' | 'audio' | 'video' = 'all';
   searchQuery = '';
+  private timeUpdateInterval: any;
 
   constructor(
     private fileService: FileService,
@@ -27,6 +27,16 @@ export class MyFilesComponent implements OnInit {
 
   ngOnInit() {
     this.loadFiles();
+    // Update time remaining every second for temporary files
+    this.timeUpdateInterval = setInterval(() => {
+      this.updateTimeRemaining();
+    }, 1000);
+  }
+
+  ngOnDestroy() {
+    if (this.timeUpdateInterval) {
+      clearInterval(this.timeUpdateInterval);
+    }
   }
 
   loadFiles() {
@@ -71,6 +81,34 @@ export class MyFilesComponent implements OnInit {
   onSearchChange(event: any) {
     this.searchQuery = event.target.value;
     this.filterFiles();
+  }
+
+  toggleKeepStatus(file: FileData) {
+    const newStatus = !file.keepPermanently;
+    
+    this.fileService.updateKeepStatus(file.id, newStatus).subscribe({
+      next: (updatedFile) => {
+        // Update the file in our local array
+        const index = this.files.findIndex(f => f.id === file.id);
+        if (index !== -1) {
+          this.files[index] = updatedFile;
+        }
+        
+        // Update filtered files
+        const filteredIndex = this.filteredFiles.findIndex(f => f.id === file.id);
+        if (filteredIndex !== -1) {
+          this.filteredFiles[filteredIndex] = updatedFile;
+        }
+        
+        const statusMsg = newStatus 
+          ? 'File will be kept permanently' 
+          : 'File will auto-delete in 10 minutes';
+        this.toastService.success(statusMsg);
+      },
+      error: (error) => {
+        this.toastService.error('Failed to update file status');
+      }
+    });
   }
 
   downloadFile(file: FileData) {
@@ -150,5 +188,15 @@ export class MyFilesComponent implements OnInit {
 
   getFilesByCategory(category: string): FileData[] {
     return this.files.filter(f => f.fileType === category);
+  }
+
+  getTimeRemaining(purgeAt: string | null | undefined): string {
+    return this.fileService.getTimeRemaining(purgeAt || null);
+  }
+
+  updateTimeRemaining() {
+    // Force re-render of time remaining for temporary files
+    // This is called every second by the interval
+    this.filteredFiles = [...this.filteredFiles];
   }
 }

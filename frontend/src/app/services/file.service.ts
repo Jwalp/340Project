@@ -1,4 +1,3 @@
-// frontend/src/app/services/file.service.ts - With keepPermanently support
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpEvent, HttpEventType, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -62,10 +61,12 @@ export class FileService {
     );
   }
 
-  updateKeepStatus(fileId: string, keepPermanently: boolean): Observable<FileResponse> {
+  updateKeepStatus(fileId: string, keepPermanently: boolean): Observable<FileData> {
     return this.http.patch<FileResponse>(
       `${this.apiUrl}/files/${fileId}/keep-status`,
       { keepPermanently }
+    ).pipe(
+      map(response => response.file!)
     );
   }
 

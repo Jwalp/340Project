@@ -1,4 +1,4 @@
-// backend/controllers/fileController.js - FIXED VERSION
+// backend/controllers/fileController.js - FIXED .ico + Keep Toggle
 const File = require('../models/File');
 const mongoose = require('mongoose');
 const { Readable } = require('stream');
@@ -47,7 +47,9 @@ const FILE_TYPES = {
     'image/heic',
     'image/heif',
     'image/x-icon',
-    'image/vnd.microsoft.icon'
+    'image/vnd.microsoft.icon',
+    // CRITICAL: Add fallback for .ico files
+    'application/octet-stream' // Many .ico files report as this
   ],
   audio: [
     'audio/mpeg',
@@ -84,7 +86,7 @@ const EXTENSION_CATEGORIES = {
   jpg: 'image', jpeg: 'image', png: 'image', gif: 'image',
   webp: 'image', svg: 'image', bmp: 'image',
   heic: 'image', heif: 'image',
-  ico: 'image', icon: 'image',  
+  ico: 'image', icon: 'image',  // CRITICAL: .ico support
   
   // Audio
   mp3: 'audio', wav: 'audio', ogg: 'audio',
@@ -97,6 +99,15 @@ const EXTENSION_CATEGORIES = {
 
 // ENHANCED Get file type category with extension fallback
 const getFileCategory = (mimeType, filename = '') => {
+  // SPECIAL CASE: .ico files with application/octet-stream
+  if (filename && mimeType === 'application/octet-stream') {
+    const extension = filename.toLowerCase().split('.').pop();
+    if (extension === 'ico' || extension === 'icon') {
+      console.log(`✅ .ico file detected via extension fallback: ${filename}`);
+      return 'image';
+    }
+  }
+
   // First, try MIME type matching
   for (const [category, types] of Object.entries(FILE_TYPES)) {
     if (types.includes(mimeType)) {
@@ -104,7 +115,7 @@ const getFileCategory = (mimeType, filename = '') => {
     }
   }
   
-  // Fallback: Check file extension (critical for .ico files!)
+  // Fallback: Check file extension
   if (filename) {
     const extension = filename.toLowerCase().split('.').pop();
     if (extension && EXTENSION_CATEGORIES[extension]) {
@@ -136,6 +147,9 @@ exports.uploadFile = async (req, res) => {
     }
 
     const { originalname, mimetype, size, buffer } = req.file;
+    
+    // Get keepPermanently flag from request body
+    const keepPermanently = req.body.keepPermanently === 'true';
     
     // Check file type - NOW PASSES FILENAME FOR EXTENSION CHECKING
     const fileCategory = getFileCategory(mimetype, originalname);
@@ -170,7 +184,7 @@ exports.uploadFile = async (req, res) => {
         .on('finish', resolve);
     });
 
-    // Save file metadata to database
+    // Save file metadata to database with keepPermanently flag
     const fileDoc = await File.create({
       filename,
       originalName: originalname,
@@ -178,18 +192,25 @@ exports.uploadFile = async (req, res) => {
       mimeType: mimetype,
       size: size,
       userId: req.user.id,
-      gridFSId: uploadStream.id
+      gridFSId: uploadStream.id,
+      keepPermanently: keepPermanently,
+      purgeAt: keepPermanently ? null : new Date(Date.now() + 10 * 60 * 1000) // 10 min or null
     });
+
+    const keepMsg = keepPermanently ? ' (kept permanently)' : ' (will auto-delete in 10 min)';
+    console.log(`📁 File saved: ${originalname}${keepMsg}`);
 
     res.status(201).json({
       success: true,
-      message: 'File uploaded successfully',
+      message: `File uploaded successfully${keepMsg}`,
       file: {
         id: fileDoc._id,
         filename: fileDoc.originalName,
         fileType: fileDoc.fileType,
         size: fileDoc.size,
-        uploadDate: fileDoc.uploadDate
+        uploadDate: fileDoc.uploadDate,
+        keepPermanently: fileDoc.keepPermanently,
+        purgeAt: fileDoc.purgeAt
       }
     });
   } catch (error) {
@@ -197,6 +218,53 @@ exports.uploadFile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to upload file'
+    });
+  }
+};
+
+// Update keep status for existing file
+exports.updateKeepStatus = async (req, res) => {
+  try {
+    const { keepPermanently } = req.body;
+    
+    const file = await File.findOne({
+      _id: req.params.id,
+      userId: req.user.id
+    });
+
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        message: 'File not found'
+      });
+    }
+
+    // Update keep status
+    file.keepPermanently = keepPermanently;
+    file.purgeAt = keepPermanently ? null : new Date(Date.now() + 10 * 60 * 1000);
+    await file.save();
+
+    const statusMsg = keepPermanently ? 'kept permanently' : 'set to auto-delete in 10 minutes';
+    console.log(`🔄 File ${file.originalName} ${statusMsg}`);
+
+    res.status(200).json({
+      success: true,
+      message: `File ${statusMsg}`,
+      file: {
+        id: file._id,
+        filename: file.originalName,
+        fileType: file.fileType,
+        size: file.size,
+        uploadDate: file.uploadDate,
+        keepPermanently: file.keepPermanently,
+        purgeAt: file.purgeAt
+      }
+    });
+  } catch (error) {
+    console.error('Update keep status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update file status'
     });
   }
 };
@@ -227,7 +295,9 @@ exports.getFiles = async (req, res) => {
         fileType: file.fileType,
         mimeType: file.mimeType,
         size: file.size,
-        uploadDate: file.uploadDate
+        uploadDate: file.uploadDate,
+        keepPermanently: file.keepPermanently,
+        purgeAt: file.purgeAt
       }))
     });
   } catch (error) {
@@ -262,7 +332,9 @@ exports.getFileById = async (req, res) => {
         fileType: file.fileType,
         mimeType: file.mimeType,
         size: file.size,
-        uploadDate: file.uploadDate
+        uploadDate: file.uploadDate,
+        keepPermanently: file.keepPermanently,
+        purgeAt: file.purgeAt
       }
     });
   } catch (error) {
