@@ -428,3 +428,41 @@ exports.resetPassword = async (req, res) => {
     });
   }
 };
+
+exports.deleteAccount = async (req, res) => {
+  const { confirmText } = req.body;
+
+  try {
+    // Verify confirmation text
+    if (!confirmText || confirmText.toUpperCase() !== 'CONFIRM') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please type CONFIRM to delete your account'
+      });
+    }
+
+    // Get user
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Delete the user
+    await User.findByIdAndDelete(req.user.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during account deletion'
+    });
+  }
+};

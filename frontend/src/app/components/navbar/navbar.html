@@ -18,7 +18,8 @@
     <div class="nav-links" *ngIf="isLoggedIn">
       <a routerLink="/">Home</a>
       <a routerLink="/dashboard">Dashboard</a>
-      <span class="username">👋 {{ username }}</span>
+      <a routerLink="/settings">Settings</a>
+      <span class="username">Welcome {{ username }}</span>
       <button (click)="logout()" class="btn-outline">Logout</button>
     </div>
   </div>

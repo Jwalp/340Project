@@ -124,4 +124,10 @@ export class AuthService {
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
   }
+
+  deleteAccount(password?: string): Observable<MessageResponse> {
+  return this.http.delete<MessageResponse>(`${this.apiUrl}/auth/delete-account`, {
+    body: password ? { password } : {}
+  });
+  }
 }

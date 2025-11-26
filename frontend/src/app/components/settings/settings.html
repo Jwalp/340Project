@@ -1,0 +1,80 @@
+<div class="settings-page">
+  <main class="settings-container">
+    <h1>Settings</h1>
+    <p class="subtitle">Manage your account settings</p>
+
+    <!-- Account Information -->
+    <div class="info-card">
+      <h2>Account Information</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <label>Username</label>
+          <p>{{ user?.username }}</p>
+        </div>
+        <div class="info-item">
+          <label>Email</label>
+          <p>{{ user?.email }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="danger-zone">
+      <h2>⚠️ Danger Zone</h2>
+      <p>Once you delete your account, there is no going back. This action cannot be undone.</p>
+      
+      <button class="btn-danger" (click)="openDeleteModal()">
+        Delete My Account
+      </button>
+    </div>
+  </main>
+
+  <!-- Delete Confirmation Modal -->
+  <div *ngIf="showDeleteModal" class="modal-overlay" (click)="closeDeleteModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="closeDeleteModal()">✕</button>
+      
+      <h2>⚠️ Confirm Account Deletion</h2>
+      <p class="modal-warning">
+        Are you absolutely sure? This action <strong>cannot be undone</strong>.
+        All your data will be permanently deleted.
+      </p>
+
+      <div class="modal-form">
+        <div class="form-group">
+          <label for="confirm-text">Type <strong>CONFIRM</strong> to delete your account</label>
+          <input 
+            type="text" 
+            id="confirm-text" 
+            [(ngModel)]="confirmText" 
+            placeholder="Type CONFIRM here"
+            [disabled]="isDeleting"
+            class="confirm-input">
+        </div>
+
+        <div *ngIf="errorMessage" class="error-message">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          {{ errorMessage }}
+        </div>
+
+        <div class="modal-actions">
+          <button 
+            class="btn-secondary" 
+            (click)="closeDeleteModal()"
+            [disabled]="isDeleting">
+            Cancel
+          </button>
+          <button 
+            class="btn-danger" 
+            (click)="deleteAccount()"
+            [disabled]="isDeleting || !isConfirmValid()">
+            <span *ngIf="!isDeleting">🗑️ Delete Forever</span>
+            <span *ngIf="isDeleting">
+              <i class="fa-solid fa-spinner fa-spin"></i> Deleting...
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

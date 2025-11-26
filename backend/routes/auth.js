@@ -10,7 +10,8 @@ const {
   resetPassword,
   validateResetToken,
   verifyEmail,
-  resendVerification
+  resendVerification,
+  deleteAccount
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const passport = require('passport');
@@ -131,5 +132,7 @@ router.get('/google/callback',
     }
   }
 );
+
+router.delete('/delete-account', protect, deleteAccount);
 
 module.exports = router;

@@ -7,6 +7,7 @@ import { ForgotPasswordComponent } from './components/forgot-password/forgot-pas
 import { ResetPasswordComponent } from './components/reset-password/reset-password';
 import { VerifyEmailComponent } from './components/verify-email/verify-email';
 import { ResendVerificationComponent } from './components/resend-verification/resend-verification';
+import { SettingsComponent } from './components/settings/settings';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -16,5 +17,6 @@ export const routes: Routes = [
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'verify-email', component: VerifyEmailComponent },
-  { path: 'resend-verification', component: ResendVerificationComponent }
+  { path: 'resend-verification', component: ResendVerificationComponent },
+  { path: 'settings', component: SettingsComponent }
 ];
