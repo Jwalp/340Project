@@ -39,10 +39,11 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Routes
+// Routes - ALL ROUTES MUST BE BEFORE 404 HANDLER
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/files', filesRouter); // ✅ Moved BEFORE 404 handler
 
 // Catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -59,7 +60,5 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
-
-app.use('/api/files', filesRouter);
 
 module.exports = app;
