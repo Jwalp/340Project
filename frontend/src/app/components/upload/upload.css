@@ -328,3 +328,72 @@
     min-width: auto;
   }
 }
+
+.upload-options {
+  background: rgba(45, 27, 78, 0.8);
+  backdrop-filter: blur(20px);
+  border: 2px solid rgba(0, 255, 136, 0.3);
+  border-radius: 15px;
+  padding: 20px 30px;
+  margin-bottom: 30px;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-container input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  accent-color: #00ff88;
+  flex-shrink: 0;
+}
+
+.checkbox-label {
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-label i {
+  color: #00ff88;
+  font-size: 1rem;
+}
+
+/* Keep Badge in File List */
+.keep-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 255, 136, 0.2);
+  color: #00ff88;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 8px;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.keep-badge i {
+  font-size: 0.7rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .upload-options {
+    padding: 15px 20px;
+  }
+  
+  .checkbox-label {
+    font-size: 1rem;
+  }
+}

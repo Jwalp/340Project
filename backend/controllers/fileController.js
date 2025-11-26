@@ -1,4 +1,4 @@
-// backend/controllers/fileController.js
+// backend/controllers/fileController.js - FIXED VERSION
 const File = require('../models/File');
 const mongoose = require('mongoose');
 const { Readable } = require('stream');
@@ -70,13 +70,49 @@ const FILE_TYPES = {
   ]
 };
 
-// Get file type category
-const getFileCategory = (mimeType) => {
+// Extension to category mapping for fallback
+const EXTENSION_CATEGORIES = {
+  // Documents
+  pdf: 'document', doc: 'document', docx: 'document',
+  xls: 'document', xlsx: 'document', ppt: 'document', pptx: 'document',
+  txt: 'document', md: 'document', markdown: 'document',
+  html: 'document', htm: 'document', css: 'document', csv: 'document',
+  rtf: 'document', odt: 'document', ods: 'document', odp: 'document',
+  epub: 'document', xml: 'document', json: 'document',
+  
+  // Images
+  jpg: 'image', jpeg: 'image', png: 'image', gif: 'image',
+  webp: 'image', svg: 'image', bmp: 'image',
+  heic: 'image', heif: 'image',
+  ico: 'image', icon: 'image',  
+  
+  // Audio
+  mp3: 'audio', wav: 'audio', ogg: 'audio',
+  aac: 'audio', flac: 'audio', m4a: 'audio', webm: 'audio',
+  
+  // Video
+  mp4: 'video', mov: 'video', avi: 'video',
+  mkv: 'video', mpeg: 'video', flv: 'video'
+};
+
+// ENHANCED Get file type category with extension fallback
+const getFileCategory = (mimeType, filename = '') => {
+  // First, try MIME type matching
   for (const [category, types] of Object.entries(FILE_TYPES)) {
     if (types.includes(mimeType)) {
       return category;
     }
   }
+  
+  // Fallback: Check file extension (critical for .ico files!)
+  if (filename) {
+    const extension = filename.toLowerCase().split('.').pop();
+    if (extension && EXTENSION_CATEGORIES[extension]) {
+      console.log(`⚠️ Using extension fallback for ${filename} (MIME: ${mimeType}) -> ${EXTENSION_CATEGORIES[extension]}`);
+      return EXTENSION_CATEGORIES[extension];
+    }
+  }
+  
   return null;
 };
 
@@ -101,14 +137,17 @@ exports.uploadFile = async (req, res) => {
 
     const { originalname, mimetype, size, buffer } = req.file;
     
-    // Check file type
-    const fileCategory = getFileCategory(mimetype);
+    // Check file type - NOW PASSES FILENAME FOR EXTENSION CHECKING
+    const fileCategory = getFileCategory(mimetype, originalname);
     if (!fileCategory) {
+      console.log(`❌ File rejected: ${originalname} (MIME: ${mimetype})`);
       return res.status(400).json({
         success: false,
         message: 'File type not supported. Please upload documents, images, audio, or video files only.'
       });
     }
+
+    console.log(`✅ File accepted: ${originalname} -> ${fileCategory} (MIME: ${mimetype})`);
 
     // Generate unique filename
     const filename = `${Date.now()}-${originalname}`;

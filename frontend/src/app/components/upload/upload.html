@@ -1,9 +1,20 @@
-<!-- frontend/src/app/components/upload/upload.html -->
+<!-- frontend/src/app/components/upload/upload.html - With checkbox -->
 <div class="upload-page">
   <main class="upload-container">
     <div class="upload-header">
       <h1>📤 Upload Files</h1>
       <p class="subtitle">Upload your documents, images, audio, and video files</p>
+    </div>
+
+    <!-- Keep Permanently Checkbox -->
+    <div class="upload-options">
+      <label class="checkbox-container">
+        <input type="checkbox" [(ngModel)]="keepPermanently">
+        <span class="checkbox-label">
+          <i class="fa-solid fa-lock"></i>
+          Keep files permanently (otherwise auto-delete after 10 minutes)
+        </span>
+      </label>
     </div>
 
     <!-- Drop Zone -->
@@ -40,7 +51,12 @@
           <div class="file-info">
             <i class="fa-solid {{ getFileIcon(item.file) }} file-icon"></i>
             <div class="file-details">
-              <p class="file-name">{{ item.file.name }}</p>
+              <p class="file-name">
+                {{ item.file.name }}
+                <span class="keep-badge" *ngIf="item.keepPermanently">
+                  <i class="fa-solid fa-lock"></i> Permanent
+                </span>
+              </p>
               <p class="file-size">{{ formatFileSize(item.file.size) }}</p>
             </div>
           </div>
@@ -79,7 +95,7 @@
         <div class="format-card">
           <i class="fa-solid fa-file-audio"></i>
           <h4>Audio</h4>
-          <p>MP3, WAV, OGG, AAC, FLAC, M4A</p>
+          <p>MP3, WAV, OGG, AAC, FLAC, M4A, WebM</p>
         </div>
         <div class="format-card">
           <i class="fa-solid fa-file-video"></i>

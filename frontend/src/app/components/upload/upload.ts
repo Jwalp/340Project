@@ -1,7 +1,8 @@
-// frontend/src/app/components/upload/upload.ts
+// frontend/src/app/components/upload/upload.ts - With keepPermanently checkbox
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { FileService } from '../../services/file.service';
 import { ToastService } from '../../services/toast.service';
 
@@ -9,38 +10,40 @@ interface UploadingFile {
   file: File;
   progress: number;
   error?: string;
+  keepPermanently?: boolean;
 }
 
 @Component({
   selector: 'app-upload',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './upload.html',
   styleUrls: ['./upload.css']
 })
 export class UploadComponent {
   uploadingFiles: UploadingFile[] = [];
   isDragging = false;
+  keepPermanently = false; // Checkbox state
 
-  // Accepted file types - UPDATED WITH ICONS
   acceptedTypes = {
-    document: [
-      // Microsoft Office
-      '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-      // Text formats
+    document: ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
       '.txt', '.md', '.markdown', '.html', '.htm', '.css', '.csv',
-      // Rich Text and OpenDocument
-      '.rtf', '.odt', '.ods', '.odp',
-      // EPUB and other
-      '.epub', '.xml', '.json'
-    ],
-    image: [
-      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', 
-      '.heic', '.heif', '.ico', '.icon'
-    ],
-    audio: ['.mp3', '.wav', '.ogg', '.aac', '.flac', '.m4a'],
+      '.rtf', '.odt', '.ods', '.odp', '.epub', '.xml', '.json'],
+    image: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', 
+      '.heic', '.heif', '.ico', '.icon'],
+    audio: ['.mp3', '.wav', '.ogg', '.aac', '.flac', '.m4a', '.webm'],
     video: ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.mpeg', '.flv']
   };
+
+  private allAcceptedExtensions = [
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.txt', '.md', '.markdown', '.html', '.htm', '.css', '.csv',
+    '.rtf', '.odt', '.ods', '.odp', '.epub', '.xml', '.json',
+    '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', 
+    '.heic', '.heif', '.ico', '.icon',
+    '.mp3', '.wav', '.ogg', '.aac', '.flac', '.m4a', '.webm',
+    '.mp4', '.mov', '.avi', '.mkv', '.webm', '.mpeg', '.flv'
+  ];
 
   constructor(
     private fileService: FileService,
@@ -74,7 +77,6 @@ export class UploadComponent {
     if (files) {
       this.handleFiles(Array.from(files));
     }
-    // Reset input
     event.target.value = '';
   }
 
@@ -89,32 +91,27 @@ export class UploadComponent {
   }
 
   isValidFileType(file: File): boolean {
-    const extension = '.' + file.name.split('.').pop()?.toLowerCase();
-    const allAcceptedTypes = [
-      ...this.acceptedTypes.document,
-      ...this.acceptedTypes.image,
-      ...this.acceptedTypes.audio,
-      ...this.acceptedTypes.video
-    ];
-    return allAcceptedTypes.includes(extension);
+    const fileName = file.name.toLowerCase();
+    return this.allAcceptedExtensions.some(ext => fileName.endsWith(ext));
   }
 
   uploadFile(file: File): void {
     const uploadingFile: UploadingFile = {
       file,
-      progress: 0
+      progress: 0,
+      keepPermanently: this.keepPermanently
     };
 
     this.uploadingFiles.push(uploadingFile);
 
-    this.fileService.uploadFile(file).subscribe({
+    this.fileService.uploadFile(file, this.keepPermanently).subscribe({
       next: (result) => {
         uploadingFile.progress = result.progress;
         
         if (result.file) {
-          // Upload complete
-          this.toastService.success(`${file.name} uploaded successfully!`);
-          // Remove from uploading list after a delay
+          const keepMsg = this.keepPermanently ? ' (kept permanently)' : ' (will auto-delete in 10 min)';
+          this.toastService.success(`${file.name} uploaded successfully${keepMsg}`);
+          
           setTimeout(() => {
             this.uploadingFiles = this.uploadingFiles.filter(f => f !== uploadingFile);
           }, 2000);
@@ -124,7 +121,6 @@ export class UploadComponent {
         uploadingFile.error = error.error?.message || 'Upload failed';
         this.toastService.error(`Failed to upload ${file.name}`);
         
-        // Remove failed upload after delay
         setTimeout(() => {
           this.uploadingFiles = this.uploadingFiles.filter(f => f !== uploadingFile);
         }, 3000);

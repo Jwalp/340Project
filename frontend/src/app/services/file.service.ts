@@ -1,10 +1,9 @@
-// frontend/src/app/services/file.service.ts
+// frontend/src/app/services/file.service.ts - With keepPermanently support
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpEvent, HttpEventType } from '@angular/common/http';
+import { HttpClient, HttpEvent, HttpEventType, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { HttpParams } from '@angular/common/http';
 
 export interface FileData {
   id: string;
@@ -13,6 +12,8 @@ export interface FileData {
   mimeType: string;
   size: number;
   uploadDate: string;
+  keepPermanently?: boolean;
+  purgeAt?: string | null;
 }
 
 interface FileResponse {
@@ -31,9 +32,10 @@ export class FileService {
 
   constructor(private http: HttpClient) {}
 
-  uploadFile(file: File): Observable<{ progress: number; file?: FileData }> {
+  uploadFile(file: File, keepPermanently: boolean = false): Observable<{ progress: number; file?: FileData }> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('keepPermanently', keepPermanently.toString());
 
     return this.http.post<FileResponse>(
       `${this.apiUrl}/files/upload`,
@@ -60,19 +62,22 @@ export class FileService {
     );
   }
 
+  updateKeepStatus(fileId: string, keepPermanently: boolean): Observable<FileResponse> {
+    return this.http.patch<FileResponse>(
+      `${this.apiUrl}/files/${fileId}/keep-status`,
+      { keepPermanently }
+    );
+  }
 
-    getFiles(fileType?: string): Observable<FileData[]> {
+  getFiles(fileType?: string): Observable<FileData[]> {
     let params = new HttpParams();
     if (fileType) {
-        params = params.set('fileType', fileType);  // Add query parameter if fileType is provided
+      params = params.set('fileType', fileType);
     }
 
     return this.http.get<FileResponse>(`${this.apiUrl}/files`, { params })
-        .pipe(
-        map(response => response.files || [])  // Return files or an empty array
-    );
-    }
-
+      .pipe(map(response => response.files || []));
+  }
 
   getFileById(id: string): Observable<FileData> {
     return this.http.get<FileResponse>(`${this.apiUrl}/files/${id}`)
@@ -95,5 +100,23 @@ export class FileService {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  getTimeRemaining(purgeAt: string | null): string {
+    if (!purgeAt) return 'Permanent';
+    
+    const now = new Date().getTime();
+    const purge = new Date(purgeAt).getTime();
+    const diff = purge - now;
+    
+    if (diff <= 0) return 'Expired';
+    
+    const minutes = Math.floor(diff / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
   }
 }
