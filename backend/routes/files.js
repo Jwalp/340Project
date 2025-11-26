@@ -8,7 +8,8 @@ const {
   getFiles,
   getFileById,
   deleteFile,
-  downloadFile
+  downloadFile,
+  updateKeepStatus
 } = require('../controllers/fileController');
 
 // Configure multer for file uploads (store in memory for processing)
@@ -28,6 +29,7 @@ router.post('/upload', upload.single('file'), uploadFile);
 router.get('/', getFiles);
 router.get('/:id', getFileById);
 router.get('/:id/download', downloadFile);
+router.patch('/:id/keep-status', updateKeepStatus);
 router.delete('/:id', deleteFile);
 
 module.exports = router;
