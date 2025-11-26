@@ -22,7 +22,7 @@ export class UploadComponent {
   uploadingFiles: UploadingFile[] = [];
   isDragging = false;
 
-  // Accepted file types
+  // Accepted file types - UPDATED WITH ICONS
   acceptedTypes = {
     document: [
       // Microsoft Office
@@ -34,7 +34,10 @@ export class UploadComponent {
       // EPUB and other
       '.epub', '.xml', '.json'
     ],
-    image: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.heic', '.heif'],
+    image: [
+      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', 
+      '.heic', '.heif', '.ico', '.icon'
+    ],
     audio: ['.mp3', '.wav', '.ogg', '.aac', '.flac', '.m4a'],
     video: ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.mpeg', '.flv']
   };

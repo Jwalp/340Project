@@ -2,8 +2,6 @@
 const File = require('../models/File');
 const mongoose = require('mongoose');
 const { Readable } = require('stream');
-const path = require('path');
-const fs = require('fs');
 
 // File type mappings
 const FILE_TYPES = {
@@ -47,7 +45,9 @@ const FILE_TYPES = {
     'image/svg+xml',
     'image/bmp',
     'image/heic',
-    'image/heif'
+    'image/heif',
+    'image/x-icon',
+    'image/vnd.microsoft.icon'
   ],
   audio: [
     'audio/mpeg',
@@ -86,9 +86,10 @@ mongoose.connection.once('open', () => {
   gfsBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
     bucketName: 'uploads'
   });
+  console.log('GridFS bucket initialized');
 });
 
-// Upload file
+// Upload file - ALL FILES GO TO GRIDFS
 exports.uploadFile = async (req, res) => {
   try {
     if (!req.file) {
@@ -111,61 +112,35 @@ exports.uploadFile = async (req, res) => {
 
     // Generate unique filename
     const filename = `${Date.now()}-${originalname}`;
-    const fileSize = size;
-    const isLargeFile = fileSize > 16 * 1024 * 1024; // 16MB threshold for GridFS
 
-    let fileDoc;
-
-    if (isLargeFile) {
-      // Use GridFS for large files
-      const readableStream = Readable.from(buffer);
-      const uploadStream = gfsBucket.openUploadStream(filename, {
-        metadata: {
-          originalName: originalname,
-          userId: req.user.id,
-          fileType: fileCategory,
-          mimeType: mimetype
-        }
-      });
-
-      await new Promise((resolve, reject) => {
-        readableStream
-          .pipe(uploadStream)
-          .on('error', reject)
-          .on('finish', resolve);
-      });
-
-      // Save file metadata to database
-      fileDoc = await File.create({
-        filename,
+    // Upload ALL files to GridFS (no local storage)
+    const readableStream = Readable.from(buffer);
+    const uploadStream = gfsBucket.openUploadStream(filename, {
+      metadata: {
         originalName: originalname,
-        fileType: fileCategory,
-        mimeType: mimetype,
-        size: fileSize,
         userId: req.user.id,
-        gridFSId: uploadStream.id
-      });
-    } else {
-      // Store small files locally
-      const uploadsDir = path.join(__dirname, '../uploads');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
+        fileType: fileCategory,
+        mimeType: mimetype
       }
+    });
 
-      const filePath = path.join(uploadsDir, filename);
-      fs.writeFileSync(filePath, buffer);
+    await new Promise((resolve, reject) => {
+      readableStream
+        .pipe(uploadStream)
+        .on('error', reject)
+        .on('finish', resolve);
+    });
 
-      // Save file metadata to database
-      fileDoc = await File.create({
-        filename,
-        originalName: originalname,
-        fileType: fileCategory,
-        mimeType: mimetype,
-        size: fileSize,
-        userId: req.user.id,
-        path: filePath
-      });
-    }
+    // Save file metadata to database
+    const fileDoc = await File.create({
+      filename,
+      originalName: originalname,
+      fileType: fileCategory,
+      mimeType: mimetype,
+      size: size,
+      userId: req.user.id,
+      gridFSId: uploadStream.id
+    });
 
     res.status(201).json({
       success: true,
@@ -202,7 +177,7 @@ exports.getFiles = async (req, res) => {
 
     const files = await File.find(query)
       .sort({ [sortField]: sortOrder })
-      .select('-path -gridFSId');
+      .select('-gridFSId');
 
     res.status(200).json({
       success: true,
@@ -231,7 +206,7 @@ exports.getFileById = async (req, res) => {
     const file = await File.findOne({
       _id: req.params.id,
       userId: req.user.id
-    }).select('-path -gridFSId');
+    }).select('-gridFSId');
 
     if (!file) {
       return res.status(404).json({
@@ -260,7 +235,7 @@ exports.getFileById = async (req, res) => {
   }
 };
 
-// Download file
+// Download file - STREAM FROM GRIDFS
 exports.downloadFile = async (req, res) => {
   try {
     const file = await File.findOne({
@@ -275,24 +250,30 @@ exports.downloadFile = async (req, res) => {
       });
     }
 
-    res.set({
-      'Content-Type': file.mimeType,
-      'Content-Disposition': `attachment; filename="${file.originalName}"`
-    });
-
-    if (file.gridFSId) {
-      // Stream from GridFS
-      const downloadStream = gfsBucket.openDownloadStream(file.gridFSId);
-      downloadStream.pipe(res);
-    } else if (file.path) {
-      // Send local file
-      res.sendFile(file.path);
-    } else {
+    if (!file.gridFSId) {
       return res.status(500).json({
         success: false,
         message: 'File data not found'
       });
     }
+
+    res.set({
+      'Content-Type': file.mimeType,
+      'Content-Disposition': `attachment; filename="${file.originalName}"`
+    });
+
+    // Stream from GridFS
+    const downloadStream = gfsBucket.openDownloadStream(file.gridFSId);
+    
+    downloadStream.on('error', (error) => {
+      console.error('Download stream error:', error);
+      res.status(404).json({
+        success: false,
+        message: 'File not found in storage'
+      });
+    });
+
+    downloadStream.pipe(res);
   } catch (error) {
     console.error('Download error:', error);
     res.status(500).json({
@@ -302,7 +283,7 @@ exports.downloadFile = async (req, res) => {
   }
 };
 
-// Delete file
+// Delete file - DELETE FROM GRIDFS
 exports.deleteFile = async (req, res) => {
   try {
     const file = await File.findOne({
@@ -317,11 +298,14 @@ exports.deleteFile = async (req, res) => {
       });
     }
 
-    // Delete from GridFS or local storage
+    // Delete from GridFS
     if (file.gridFSId) {
-      await gfsBucket.delete(file.gridFSId);
-    } else if (file.path && fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
+      try {
+        await gfsBucket.delete(file.gridFSId);
+      } catch (error) {
+        console.error('GridFS delete error:', error);
+        // Continue to delete database record even if GridFS delete fails
+      }
     }
 
     // Delete from database
