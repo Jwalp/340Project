@@ -25,31 +25,42 @@ export class AppComponent implements OnInit {
     private authService: AuthService
   ) {}
 
-  ngOnInit() {
-    // Check for OAuth callback with token from Google
-    // Only process if we're on the root route with BOTH token and user params
-    this.router.events.subscribe(() => {
-      // Only check query params when we're on the root path
-      if (this.router.url.startsWith('/?') || this.router.url === '/') {
-        this.route.queryParams.subscribe(params => {
-          console.log('Root URL Query Params:', params); // Debug log
+ngOnInit() {
+    // Check for OAuth callback with token from Google immediately on init
+    this.route.queryParams.subscribe(params => {
+      console.log('Query Params:', params); // Debug log
+      
+      if (params['token'] && params['user']) {
+        console.log('Google OAuth detected - processing authentication');
+        const token = params['token'];
+        
+        try {
+          const user = JSON.parse(decodeURIComponent(params['user']));
           
-          if (params['token'] && params['user']) {
-            console.log('Google OAuth detected - redirecting to dashboard');
-            const token = params['token'];
-            const user = JSON.parse(decodeURIComponent(params['user']));
-            
-            // Store token and user in localStorage
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(user));
-            
-            // Notify AuthService to trigger navbar update
-            this.authService.setCurrentUser(user);
-            
-            // Clean URL and redirect to dashboard
-            this.router.navigate(['/dashboard'], { replaceUrl: true });
-          }
-        });
+          // Store token and user in localStorage
+          localStorage.setItem('token', token);
+          localStorage.setItem('user', JSON.stringify(user));
+          
+          // Notify AuthService to trigger navbar update
+          this.authService.setCurrentUser(user);
+          
+          console.log('Authentication successful, redirecting to dashboard');
+          
+          // Clean URL and redirect to dashboard
+          // Use setTimeout to ensure the redirect happens after the current digest cycle
+          setTimeout(() => {
+            this.router.navigate(['/dashboard'], { 
+              replaceUrl: true,
+              queryParams: {} // Clear query params
+            });
+          }, 0);
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+          this.router.navigate(['/login'], { 
+            replaceUrl: true,
+            queryParams: { error: 'auth_failed' }
+          });
+        }
       }
     });
   }
