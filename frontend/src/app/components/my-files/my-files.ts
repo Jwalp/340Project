@@ -1,11 +1,16 @@
-// frontend/src/app/components/my-files/my-files.ts - With Universal Document Preview
-import { Component, OnInit, OnDestroy } from '@angular/core';
+// frontend/src/app/components/my-files/my-files.ts - With ALL Document Format Support
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FileService, FileData } from '../../services/file.service';
 import { ToastService } from '../../services/toast.service';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl, SafeResourceUrl } from '@angular/platform-browser';
+
+declare var odf: any;
+declare var mammoth: any;
+declare var XLSX: any;
+declare var ePub: any;
 
 @Component({
   selector: 'app-my-files',
@@ -15,12 +20,23 @@ import { DomSanitizer, SafeUrl, SafeResourceUrl } from '@angular/platform-browse
   styleUrls: ['./my-files.css']
 })
 export class MyFilesComponent implements OnInit, OnDestroy {
+  @ViewChild('odfContainer') odfContainer!: ElementRef;
+  @ViewChild('epubContainer') epubContainer!: ElementRef;
+  
   files: FileData[] = [];
   filteredFiles: FileData[] = [];
   isLoading = true;
   selectedCategory: 'all' | 'document' | 'image' | 'audio' | 'video' = 'all';
   searchQuery = '';
   private timeUpdateInterval: any;
+  private odfCanvas: any = null;
+  private epubRendition: any = null;
+  private scriptsLoaded = {
+    webodf: false,
+    mammoth: false,
+    xlsx: false,
+    epub: false
+  };
   
   // Viewer properties
   viewingFile: FileData | null = null;
@@ -30,30 +46,56 @@ export class MyFilesComponent implements OnInit, OnDestroy {
   isLoadingPreview = false;
   documentError: string | null = null;
   showOfficeDocDownload = false;
+  renderedDocumentHtml: any = null;
 
   // Supported formats
   private textFormats = [
     'text/plain',
     'text/markdown',
-    'text/css',
     'text/csv',
     'application/json',
     'application/xml',
     'text/xml'
   ];
 
-  // Office document formats - will show download with preview info
-  private officeFormats = [
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
-    'application/msword', // DOC
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLSX
-    'application/vnd.ms-excel', // XLS
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
-    'application/vnd.ms-powerpoint', // PPT
+  // OpenDocument formats
+  private openDocumentFormats = [
     'application/vnd.oasis.opendocument.text', // ODT
     'application/vnd.oasis.opendocument.spreadsheet', // ODS
     'application/vnd.oasis.opendocument.presentation', // ODP
+  ];
+
+  // DOCX formats
+  private docxFormats = [
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
+  ];
+
+  // Excel formats
+  private xlsxFormats = [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLSX
+    'application/vnd.ms-excel', // XLS
+  ];
+
+  // EPUB formats
+  private epubFormats = [
+    'application/epub+zip', // EPUB
+  ];
+
+  // PowerPoint and other formats - need download
+  private microsoftOfficeFormats = [
+    'application/msword', // DOC
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
+    'application/vnd.ms-powerpoint', // PPT
     'application/rtf', // RTF
+  ];
+
+  // All office formats combined
+  private officeFormats = [
+    ...this.openDocumentFormats,
+    ...this.docxFormats,
+    ...this.xlsxFormats,
+    ...this.epubFormats,
+    ...this.microsoftOfficeFormats
   ];
 
   constructor(
@@ -64,6 +106,7 @@ export class MyFilesComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadFiles();
+    this.loadExternalScripts();
     // Update time remaining every second for temporary files
     this.timeUpdateInterval = setInterval(() => {
       this.updateTimeRemaining();
@@ -74,8 +117,55 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     if (this.timeUpdateInterval) {
       clearInterval(this.timeUpdateInterval);
     }
-    // Clean up blob URL when component is destroyed
+    // Clean up ODF canvas
+    if (this.odfCanvas) {
+      try {
+        this.odfCanvas.destroy();
+      } catch (e) {}
+      this.odfCanvas = null;
+    }
+    // Clean up EPUB rendition
+    if (this.epubRendition) {
+      try {
+        this.epubRendition.destroy();
+      } catch (e) {}
+      this.epubRendition = null;
+    }
     this.cleanupUrls();
+  }
+
+  loadExternalScripts() {
+    // Load WebODF for ODT/ODS/ODP
+    if (!this.scriptsLoaded.webodf && typeof odf === 'undefined') {
+      const webodfScript = document.createElement('script');
+      webodfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/webodf/0.5.10/webodf.js';
+      webodfScript.onload = () => { this.scriptsLoaded.webodf = true; };
+      document.head.appendChild(webodfScript);
+    }
+
+    // Load Mammoth for DOCX
+    if (!this.scriptsLoaded.mammoth && typeof mammoth === 'undefined') {
+      const mammothScript = document.createElement('script');
+      mammothScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+      mammothScript.onload = () => { this.scriptsLoaded.mammoth = true; };
+      document.head.appendChild(mammothScript);
+    }
+
+    // Load SheetJS for XLSX
+    if (!this.scriptsLoaded.xlsx && typeof XLSX === 'undefined') {
+      const xlsxScript = document.createElement('script');
+      xlsxScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      xlsxScript.onload = () => { this.scriptsLoaded.xlsx = true; };
+      document.head.appendChild(xlsxScript);
+    }
+
+    // Load Epub.js for EPUB
+    if (!this.scriptsLoaded.epub && typeof ePub === 'undefined') {
+      const epubScript = document.createElement('script');
+      epubScript.src = 'https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js';
+      epubScript.onload = () => { this.scriptsLoaded.epub = true; };
+      document.head.appendChild(epubScript);
+    }
   }
 
   cleanupUrls() {
@@ -90,6 +180,7 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     this.textContent = null;
     this.documentError = null;
     this.showOfficeDocDownload = false;
+    this.renderedDocumentHtml = null;
   }
 
   loadFiles() {
@@ -109,20 +200,13 @@ export class MyFilesComponent implements OnInit, OnDestroy {
 
   filterFiles() {
     let filtered = this.files;
-
-    // Filter by category
     if (this.selectedCategory !== 'all') {
       filtered = filtered.filter(f => f.fileType === this.selectedCategory);
     }
-
-    // Filter by search query
     if (this.searchQuery) {
       const query = this.searchQuery.toLowerCase();
-      filtered = filtered.filter(f => 
-        f.filename.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter(f => f.filename.toLowerCase().includes(query));
     }
-
     this.filteredFiles = filtered;
   }
 
@@ -138,29 +222,16 @@ export class MyFilesComponent implements OnInit, OnDestroy {
 
   toggleKeepStatus(file: FileData) {
     const newStatus = !file.keepPermanently;
-    
     this.fileService.updateKeepStatus(file.id, newStatus).subscribe({
       next: (updatedFile) => {
-        // Update the file in our local array
         const index = this.files.findIndex(f => f.id === file.id);
-        if (index !== -1) {
-          this.files[index] = updatedFile;
-        }
-        
-        // Update filtered files
+        if (index !== -1) this.files[index] = updatedFile;
         const filteredIndex = this.filteredFiles.findIndex(f => f.id === file.id);
-        if (filteredIndex !== -1) {
-          this.filteredFiles[filteredIndex] = updatedFile;
-        }
-        
-        const statusMsg = newStatus 
-          ? 'File will be kept permanently' 
-          : 'File will auto-delete in 10 minutes';
+        if (filteredIndex !== -1) this.filteredFiles[filteredIndex] = updatedFile;
+        const statusMsg = newStatus ? 'File will be kept permanently' : 'File will auto-delete in 10 minutes';
         this.toastService.success(statusMsg);
       },
-      error: (error) => {
-        this.toastService.error('Failed to update file status');
-      }
+      error: () => this.toastService.error('Failed to update file status')
     });
   }
 
@@ -171,29 +242,25 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     this.showOfficeDocDownload = false;
     this.cleanupUrls();
     
-    // Handle different file types
     if (file.fileType === 'image' || file.fileType === 'audio' || file.fileType === 'video') {
-      // Media files - create blob URL
       this.fileService.downloadFile(file.id).subscribe({
         next: (blob) => {
           const url = URL.createObjectURL(blob);
           this.fileUrl = this.sanitizer.bypassSecurityTrustUrl(url);
           this.isLoadingPreview = false;
         },
-        error: (error) => {
+        error: () => {
           this.toastService.error('Failed to load file preview');
           this.isLoadingPreview = false;
           this.closeViewer();
         }
       });
     } else if (file.fileType === 'document') {
-      // Document files - check type
       this.handleDocumentPreview(file);
     }
   }
 
   handleDocumentPreview(file: FileData) {
-    // Check if it's a PDF
     if (file.mimeType === 'application/pdf') {
       this.fileService.downloadFile(file.id).subscribe({
         next: (blob) => {
@@ -201,19 +268,48 @@ export class MyFilesComponent implements OnInit, OnDestroy {
           this.viewerUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
           this.isLoadingPreview = false;
         },
-        error: (error) => {
+        error: () => {
           this.documentError = 'Failed to load PDF preview';
           this.isLoadingPreview = false;
         }
       });
     } 
-    // Check if it's an Office document or OpenDocument format
-    else if (this.officeFormats.includes(file.mimeType)) {
-      // Office documents - show download option since browser preview isn't reliable
-      this.showOfficeDocDownload = true;
-      this.isLoadingPreview = false;
+    else if (this.docxFormats.includes(file.mimeType)) {
+      this.fileService.downloadFile(file.id).subscribe({
+        next: (blob) => this.renderDocxDocument(blob),
+        error: () => {
+          this.documentError = 'Failed to load document preview';
+          this.isLoadingPreview = false;
+        }
+      });
     }
-    // Check if it's a text-based format
+    else if (this.xlsxFormats.includes(file.mimeType)) {
+      this.fileService.downloadFile(file.id).subscribe({
+        next: (blob) => this.renderXlsxDocument(blob),
+        error: () => {
+          this.documentError = 'Failed to load spreadsheet preview';
+          this.isLoadingPreview = false;
+        }
+      });
+    }
+    else if (this.epubFormats.includes(file.mimeType)) {
+      this.fileService.downloadFile(file.id).subscribe({
+        next: (blob) => this.renderEpubDocument(blob),
+        error: () => {
+          this.documentError = 'Failed to load ebook preview';
+          this.isLoadingPreview = false;
+        }
+      });
+    }
+    else if (this.openDocumentFormats.includes(file.mimeType)) {
+      this.fileService.downloadFile(file.id).subscribe({
+        next: (blob) => this.renderODFDocument(blob),
+        error: () => {
+          this.documentError = 'Failed to load document preview';
+          this.isLoadingPreview = false;
+        }
+      });
+    }
     else if (this.textFormats.includes(file.mimeType)) {
       this.fileService.downloadFile(file.id).subscribe({
         next: (blob) => {
@@ -228,13 +324,12 @@ export class MyFilesComponent implements OnInit, OnDestroy {
           };
           reader.readAsText(blob);
         },
-        error: (error) => {
+        error: () => {
           this.documentError = 'Failed to load file preview';
           this.isLoadingPreview = false;
         }
       });
     }
-    // Check if it's HTML
     else if (file.mimeType === 'text/html') {
       this.fileService.downloadFile(file.id).subscribe({
         next: (blob) => {
@@ -242,19 +337,165 @@ export class MyFilesComponent implements OnInit, OnDestroy {
           this.viewerUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
           this.isLoadingPreview = false;
         },
-        error: (error) => {
+        error: () => {
           this.documentError = 'Failed to load HTML preview';
           this.isLoadingPreview = false;
         }
       });
     }
-    // Other document types - show download prompt
+    else if (this.microsoftOfficeFormats.includes(file.mimeType)) {
+      this.showOfficeDocDownload = true;
+      this.isLoadingPreview = false;
+    }
     else {
       this.isLoadingPreview = false;
     }
   }
 
+  renderDocxDocument(blob: Blob) {
+    const checkMammoth = () => {
+      if (typeof mammoth !== 'undefined') {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          if (arrayBuffer) {
+            mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
+              .then((result: any) => {
+                this.renderedDocumentHtml = this.sanitizer.bypassSecurityTrustHtml(result.value);
+                this.isLoadingPreview = false;
+              })
+              .catch(() => {
+                this.documentError = 'Failed to render Word document';
+                this.isLoadingPreview = false;
+              });
+          }
+        };
+        reader.onerror = () => {
+          this.documentError = 'Failed to read document file';
+          this.isLoadingPreview = false;
+        };
+        reader.readAsArrayBuffer(blob);
+      } else {
+        setTimeout(checkMammoth, 100);
+      }
+    };
+    checkMammoth();
+  }
+
+  renderXlsxDocument(blob: Blob) {
+    const checkXLSX = () => {
+      if (typeof XLSX !== 'undefined') {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const data = e.target?.result;
+          if (data) {
+            try {
+              const workbook = XLSX.read(data, { type: 'array' });
+              let html = '<div class="xlsx-viewer">';
+              workbook.SheetNames.forEach((sheetName: string) => {
+                const sheet = workbook.Sheets[sheetName];
+                const htmlTable = XLSX.utils.sheet_to_html(sheet, { header: '', footer: '' });
+                html += `<div class="xlsx-sheet"><h3 class="sheet-name">${sheetName}</h3>${htmlTable}</div>`;
+              });
+              html += '</div>';
+              this.renderedDocumentHtml = this.sanitizer.bypassSecurityTrustHtml(html);
+              this.isLoadingPreview = false;
+            } catch (error) {
+              this.documentError = 'Failed to render spreadsheet';
+              this.isLoadingPreview = false;
+            }
+          }
+        };
+        reader.onerror = () => {
+          this.documentError = 'Failed to read spreadsheet file';
+          this.isLoadingPreview = false;
+        };
+        reader.readAsArrayBuffer(blob);
+      } else {
+        setTimeout(checkXLSX, 100);
+      }
+    };
+    checkXLSX();
+  }
+
+  renderEpubDocument(blob: Blob) {
+    const checkEpub = () => {
+      if (typeof ePub !== 'undefined' && this.epubContainer) {
+        try {
+          const url = URL.createObjectURL(blob);
+          const book = ePub(url);
+          const container = this.epubContainer.nativeElement;
+          container.innerHTML = '';
+          
+          this.epubRendition = book.renderTo(container, {
+            width: '100%',
+            height: '100%',
+            flow: 'paginated'
+          });
+          
+          this.epubRendition.display().then(() => {
+            this.isLoadingPreview = false;
+          }).catch(() => {
+            this.documentError = 'Failed to display ebook';
+            this.isLoadingPreview = false;
+          });
+        } catch (error) {
+          this.documentError = 'Failed to render ebook';
+          this.isLoadingPreview = false;
+        }
+      } else {
+        setTimeout(checkEpub, 100);
+      }
+    };
+    checkEpub();
+  }
+
+  renderODFDocument(blob: Blob) {
+    const checkWebODF = () => {
+      if (typeof odf !== 'undefined' && this.odfContainer) {
+        try {
+          const container = this.odfContainer.nativeElement;
+          container.innerHTML = '';
+          const odfCanvas = new odf.OdfCanvas(container);
+          this.odfCanvas = odfCanvas;
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const arrayBuffer = e.target?.result as ArrayBuffer;
+            if (arrayBuffer) {
+              try {
+                odfCanvas.load(new Uint8Array(arrayBuffer));
+                this.isLoadingPreview = false;
+              } catch (error) {
+                this.documentError = 'Failed to render OpenDocument file';
+                this.isLoadingPreview = false;
+              }
+            }
+          };
+          reader.onerror = () => {
+            this.documentError = 'Failed to read document file';
+            this.isLoadingPreview = false;
+          };
+          reader.readAsArrayBuffer(blob);
+        } catch (error) {
+          this.documentError = 'Failed to initialize document viewer';
+          this.isLoadingPreview = false;
+        }
+      } else {
+        setTimeout(checkWebODF, 100);
+      }
+    };
+    checkWebODF();
+  }
+
   closeViewer() {
+    if (this.odfCanvas) {
+      try { this.odfCanvas.destroy(); } catch (e) {}
+      this.odfCanvas = null;
+    }
+    if (this.epubRendition) {
+      try { this.epubRendition.destroy(); } catch (e) {}
+      this.epubRendition = null;
+    }
     this.cleanupUrls();
     this.viewingFile = null;
     this.isLoadingPreview = false;
@@ -264,40 +505,31 @@ export class MyFilesComponent implements OnInit, OnDestroy {
 
   canPreviewDocument(file: FileData): boolean {
     if (file.fileType !== 'document') return false;
-    
-    // Can preview PDFs, HTML, and text-based files directly
     return file.mimeType === 'application/pdf' || 
            file.mimeType === 'text/html' ||
+           this.docxFormats.includes(file.mimeType) ||
+           this.xlsxFormats.includes(file.mimeType) ||
+           this.epubFormats.includes(file.mimeType) ||
+           this.openDocumentFormats.includes(file.mimeType) ||
            this.textFormats.includes(file.mimeType);
   }
 
-  isTextDocument(file: FileData): boolean {
-    return this.textFormats.includes(file.mimeType);
-  }
-
-  isPDF(file: FileData): boolean {
-    return file.mimeType === 'application/pdf';
-  }
-
-  isHTMLDocument(file: FileData): boolean {
-    return file.mimeType === 'text/html';
-  }
-
-  isOfficeDocument(file: FileData): boolean {
-    return this.officeFormats.includes(file.mimeType);
-  }
+  isTextDocument(file: FileData): boolean { return this.textFormats.includes(file.mimeType); }
+  isPDF(file: FileData): boolean { return file.mimeType === 'application/pdf'; }
+  isHTMLDocument(file: FileData): boolean { return file.mimeType === 'text/html'; }
+  isOfficeDocument(file: FileData): boolean { return this.officeFormats.includes(file.mimeType); }
+  isOpenDocument(file: FileData): boolean { return this.openDocumentFormats.includes(file.mimeType); }
+  isDocxDocument(file: FileData): boolean { return this.docxFormats.includes(file.mimeType); }
+  isXlsxDocument(file: FileData): boolean { return this.xlsxFormats.includes(file.mimeType); }
+  isEpubDocument(file: FileData): boolean { return this.epubFormats.includes(file.mimeType); }
+  isMicrosoftOffice(file: FileData): boolean { return this.microsoftOfficeFormats.includes(file.mimeType); }
 
   getOfficeDocumentType(file: FileData): string {
     const mimeType = file.mimeType;
-    if (mimeType.includes('word') || mimeType.includes('opendocument.text')) {
-      return 'Word Document';
-    } else if (mimeType.includes('sheet') || mimeType.includes('excel') || mimeType.includes('opendocument.spreadsheet')) {
-      return 'Spreadsheet';
-    } else if (mimeType.includes('presentation') || mimeType.includes('powerpoint') || mimeType.includes('opendocument.presentation')) {
-      return 'Presentation';
-    } else if (mimeType.includes('rtf')) {
-      return 'Rich Text Document';
-    }
+    if (mimeType.includes('word')) return 'Word Document';
+    if (mimeType.includes('sheet') || mimeType.includes('excel')) return 'Spreadsheet';
+    if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'Presentation';
+    if (mimeType.includes('rtf')) return 'Rich Text Document';
     return 'Office Document';
   }
 
@@ -312,9 +544,7 @@ export class MyFilesComponent implements OnInit, OnDestroy {
         window.URL.revokeObjectURL(url);
         this.toastService.success(`Downloading ${file.filename}`);
       },
-      error: (error) => {
-        this.toastService.error('Failed to download file');
-      }
+      error: () => this.toastService.error('Failed to download file')
     });
   }
 
@@ -325,72 +555,47 @@ export class MyFilesComponent implements OnInit, OnDestroy {
           this.toastService.success(`${file.filename} deleted successfully`);
           this.loadFiles();
         },
-        error: (error) => {
-          this.toastService.error('Failed to delete file');
-        }
+        error: () => this.toastService.error('Failed to delete file')
       });
     }
   }
 
   getFileIcon(fileType: string): string {
     switch (fileType) {
-      case 'document':
-        return 'fa-file-lines';
-      case 'image':
-        return 'fa-file-image';
-      case 'audio':
-        return 'fa-file-audio';
-      case 'video':
-        return 'fa-file-video';
-      default:
-        return 'fa-file';
+      case 'document': return 'fa-file-lines';
+      case 'image': return 'fa-file-image';
+      case 'audio': return 'fa-file-audio';
+      case 'video': return 'fa-file-video';
+      default: return 'fa-file';
     }
   }
 
   getCategoryIcon(category: string): string {
     switch (category) {
-      case 'document':
-        return '📄';
-      case 'image':
-        return '🖼️';
-      case 'audio':
-        return '🎵';
-      case 'video':
-        return '🎬';
-      default:
-        return '📁';
+      case 'document': return '📄';
+      case 'image': return '🖼️';
+      case 'audio': return '🎵';
+      case 'video': return '🎬';
+      default: return '📁';
     }
   }
 
-  formatFileSize(bytes: number): string {
-    return this.fileService.formatFileSize(bytes);
-  }
-
+  formatFileSize(bytes: number): string { return this.fileService.formatFileSize(bytes); }
+  
   formatDate(date: string): string {
     return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     });
   }
 
-  getFilesByCategory(category: string): FileData[] {
-    return this.files.filter(f => f.fileType === category);
-  }
-
-  getTimeRemaining(purgeAt: string | null | undefined): string {
-    return this.fileService.getTimeRemaining(purgeAt || null);
-  }
-
+  getFilesByCategory(category: string): FileData[] { return this.files.filter(f => f.fileType === category); }
+  getTimeRemaining(purgeAt: string | null | undefined): string { return this.fileService.getTimeRemaining(purgeAt || null); }
+  
   updateTimeRemaining() {
-    // Force re-render of time remaining for temporary files
-    // This is called every second by the interval
     this.filteredFiles = [...this.filteredFiles];
   }
 
   getSupportedFormatsText(): string {
-    return 'PDF, TXT, MD, HTML, CSS, JSON, XML, CSV files can be previewed. Office documents (DOCX, XLSX, PPTX, ODT, ODS, ODP) can be downloaded to view.';
+    return 'PDF, Word (DOCX), Excel (XLSX), EPUB, ODT, ODS, ODP, TXT, MD, HTML, CSS, JSON, XML, CSV - all can be previewed! PowerPoint (PPTX, PPT), DOC, and RTF need to be downloaded.';
   }
 }
