@@ -1,4 +1,3 @@
-// frontend/src/app/app.routes.ts
 import { Routes } from '@angular/router';
 import { HomeComponent } from './components/home/home';
 import { LoginComponent } from './components/login/login';
@@ -11,6 +10,7 @@ import { ResendVerificationComponent } from './components/resend-verification/re
 import { SettingsComponent } from './components/settings/settings';
 import { UploadComponent } from './components/upload/upload';
 import { MyFilesComponent } from './components/my-files/my-files';
+import { ExportComponent } from './components/export/export';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -23,5 +23,6 @@ export const routes: Routes = [
   { path: 'resend-verification', component: ResendVerificationComponent },
   { path: 'settings', component: SettingsComponent },
   { path: 'upload', component: UploadComponent },
-  { path: 'my-files', component: MyFilesComponent }
+  { path: 'my-files', component: MyFilesComponent },
+  { path: 'export', component: ExportComponent }
 ];
