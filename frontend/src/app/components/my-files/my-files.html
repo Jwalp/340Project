@@ -1,3 +1,4 @@
+<!-- frontend/src/app/components/my-files/my-files.html - With Universal Document Preview -->
 <div class="files-page">
   <main class="files-container">
     <div class="files-header">
@@ -14,6 +15,10 @@
                (input)="onSearchChange($event)"
                [(ngModel)]="searchQuery">
       </div>
+      <a routerLink="/export" class="btn-secondary">
+        <i class="fa-solid fa-file-export"></i>
+        Export Files
+      </a>
       <a routerLink="/upload" class="btn-primary">
         <i class="fa-solid fa-plus"></i>
         Upload Files
@@ -72,9 +77,9 @@
       <p *ngIf="selectedCategory === 'all' && !searchQuery">Upload your first file to get started</p>
       <p *ngIf="selectedCategory !== 'all'">No {{ selectedCategory }} files yet</p>
       <p *ngIf="searchQuery">Try a different search term</p>
-      <a routerLink="/upload" class="btn-primary" *ngIf="!searchQuery">
-        <i class="fa-solid fa-plus"></i>
-        Upload Files
+      <a routerLink="/upload" class="empty-upload-btn" *ngIf="!searchQuery">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+        <span>Upload Files</span>
       </a>
     </div>
 
@@ -108,6 +113,12 @@
             <i class="fa-solid" [ngClass]="file.keepPermanently ? 'fa-lock' : 'fa-lock-open'"></i>
           </button>
           
+          <button class="action-btn view-btn" 
+                  (click)="viewFile(file)"
+                  title="View">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+          
           <button class="action-btn download-btn" 
                   (click)="downloadFile(file)"
                   title="Download">
@@ -123,4 +134,127 @@
       </div>
     </div>
   </main>
+
+  <!-- File Viewer Modal -->
+  <div *ngIf="viewingFile" class="modal-overlay" (click)="closeViewer()">
+    <div class="viewer-modal" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="closeViewer()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      
+      <div class="viewer-header">
+        <h3>{{ viewingFile.filename }}</h3>
+        <span class="file-type-badge">{{ viewingFile.fileType }}</span>
+      </div>
+
+      <div class="viewer-content">
+        <!-- Image Viewer -->
+        <img *ngIf="viewingFile.fileType === 'image' && fileUrl" 
+             [src]="fileUrl" 
+             [alt]="viewingFile.filename"
+             class="preview-image">
+
+        <!-- Audio Viewer -->
+        <audio *ngIf="viewingFile.fileType === 'audio' && fileUrl" 
+               [src]="fileUrl" 
+               controls
+               class="preview-audio">
+        </audio>
+
+        <!-- Video Viewer -->
+        <video *ngIf="viewingFile.fileType === 'video' && fileUrl" 
+               [src]="fileUrl" 
+               controls
+               class="preview-video">
+        </video>
+
+        <!-- Document Viewer -->
+        <div *ngIf="viewingFile.fileType === 'document'" class="document-viewer">
+          <!-- Loading State -->
+          <div *ngIf="isLoadingPreview" class="document-loading">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <p>Loading document...</p>
+          </div>
+
+          <!-- PDF Viewer -->
+          <iframe *ngIf="!isLoadingPreview && isPDF(viewingFile) && viewerUrl"
+                  [src]="viewerUrl"
+                  class="document-iframe"
+                  frameborder="0">
+          </iframe>
+
+          <!-- Text-based Document Viewer -->
+          <div *ngIf="!isLoadingPreview && isTextDocument(viewingFile) && textContent"
+               class="text-viewer">
+            <pre>{{ textContent }}</pre>
+          </div>
+
+          <!-- HTML Document Viewer -->
+          <iframe *ngIf="!isLoadingPreview && isHTMLDocument(viewingFile) && viewerUrl"
+                  [src]="viewerUrl"
+                  class="document-iframe"
+                  sandbox="allow-same-origin"
+                  frameborder="0">
+          </iframe>
+
+          <!-- Office Document Download Prompt -->
+          <div *ngIf="!isLoadingPreview && isOfficeDocument(viewingFile) && !documentError" class="office-doc-preview">
+            <div class="office-icon-wrapper">
+              <i class="fa-solid fa-file-word office-icon"></i>
+            </div>
+            <h4>{{ getOfficeDocumentType(viewingFile) }}</h4>
+            <p class="filename">{{ viewingFile.filename }}</p>
+            <p class="file-size-display">{{ formatFileSize(viewingFile.size) }}</p>
+            <p class="office-hint">
+              This {{ getOfficeDocumentType(viewingFile) }} needs to be downloaded to view its contents.
+              Click the button below to download and open it with Microsoft Office, LibreOffice, or Google Docs.
+            </p>
+            <div class="office-actions">
+              <button class="btn-primary btn-large" (click)="downloadFile(viewingFile)">
+                <i class="fa-solid fa-download"></i>
+                Download to View
+              </button>
+            </div>
+            <p class="office-apps">
+              <strong>Compatible with:</strong> Microsoft Word, Excel, PowerPoint, LibreOffice, Google Docs, Apple Pages
+            </p>
+          </div>
+
+          <!-- Unsupported Document Type -->
+          <div *ngIf="!isLoadingPreview && !isPDF(viewingFile) && !isOfficeDocument(viewingFile) && !isTextDocument(viewingFile) && !isHTMLDocument(viewingFile) && !documentError"
+               class="document-preview">
+            <i class="fa-solid fa-file-lines preview-icon"></i>
+            <p>{{ viewingFile.filename }}</p>
+            <p class="preview-hint">Preview not available for this document type</p>
+            <p class="supported-formats">{{ getSupportedFormatsText() }}</p>
+            <button class="btn-primary" (click)="downloadFile(viewingFile)">
+              <i class="fa-solid fa-download"></i>
+              Download to View
+            </button>
+          </div>
+
+          <!-- Error State -->
+          <div *ngIf="documentError" class="document-error">
+            <i class="fa-solid fa-triangle-exclamation error-icon"></i>
+            <p>Failed to load document</p>
+            <p class="error-message">{{ documentError }}</p>
+            <button class="btn-primary" (click)="downloadFile(viewingFile)">
+              <i class="fa-solid fa-download"></i>
+              Download Instead
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="viewer-actions">
+        <button class="btn-secondary" (click)="downloadFile(viewingFile)">
+          <i class="fa-solid fa-download"></i>
+          Download
+        </button>
+        <button class="btn-secondary" (click)="closeViewer()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
