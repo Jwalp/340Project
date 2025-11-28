@@ -13,8 +13,6 @@ const FILE_TYPES = {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     // Text formats
     'text/plain',
     'text/markdown',
@@ -28,7 +26,6 @@ const FILE_TYPES = {
     // OpenDocument Format
     'application/vnd.oasis.opendocument.text',
     'application/vnd.oasis.opendocument.spreadsheet',
-    'application/vnd.oasis.opendocument.presentation',
     // EPUB
     'application/epub+zip',
     // Other document formats

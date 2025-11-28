@@ -85,7 +85,8 @@ export class MyFilesComponent implements OnInit, OnDestroy {
   private microsoftOfficeFormats = [
     'application/msword', // DOC
     'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
-    'application/vnd.ms-powerpoint', // PPT
+    'application/vnd.oasis.opendocument.text', // ODT
+    'application/vnd.oasis.opendocument.spreadsheet', // ODS
     'application/rtf', // RTF
   ];
 
