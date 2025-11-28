@@ -183,6 +183,12 @@
                   frameborder="0">
           </iframe>
 
+          <!-- OpenDocument Viewer (ODT, ODS, ODP) -->
+          <div *ngIf="!isLoadingPreview && isOpenDocument(viewingFile) && viewerUrl" 
+               class="odf-viewer-container"
+               #odfContainer>
+          </div>
+
           <!-- Text-based Document Viewer -->
           <div *ngIf="!isLoadingPreview && isTextDocument(viewingFile) && textContent"
                class="text-viewer">
@@ -197,8 +203,8 @@
                   frameborder="0">
           </iframe>
 
-          <!-- Office Document Download Prompt -->
-          <div *ngIf="!isLoadingPreview && isOfficeDocument(viewingFile) && !documentError" class="office-doc-preview">
+          <!-- Microsoft Office Document Download Prompt -->
+          <div *ngIf="!isLoadingPreview && isMicrosoftOffice(viewingFile) && !documentError" class="office-doc-preview">
             <div class="office-icon-wrapper">
               <i class="fa-solid fa-file-word office-icon"></i>
             </div>
@@ -216,7 +222,7 @@
               </button>
             </div>
             <p class="office-apps">
-              <strong>Compatible with:</strong> Microsoft Word, Excel, PowerPoint, LibreOffice, Google Docs, Apple Pages
+              <strong>Compatible with:</strong> Microsoft Word, Excel, PowerPoint, LibreOffice, Google Docs
             </p>
           </div>
 
