@@ -26,9 +26,9 @@ export class UploadComponent {
   keepPermanently = false; // Checkbox state
 
   acceptedTypes = {
-    document: ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    document: ['.pdf', '.doc', '.docx', '.xls', '.xlsx',
       '.txt', '.md', '.markdown', '.html', '.htm', '.css', '.csv',
-      '.rtf', '.odt', '.ods', '.odp', '.epub', '.xml', '.json'],
+      '.rtf', '.odt', '.ods', '.epub', '.xml', '.json'],
     image: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', 
       '.heic', '.heif', '.ico', '.icon'],
     audio: ['.mp3', '.wav', '.ogg', '.aac', '.flac', '.m4a', '.webm'],

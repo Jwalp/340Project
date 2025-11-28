@@ -49,10 +49,8 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLSX
     'application/vnd.ms-excel', // XLS
     'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
-    'application/vnd.ms-powerpoint', // PPT
     'application/vnd.oasis.opendocument.text', // ODT
     'application/vnd.oasis.opendocument.spreadsheet', // ODS
-    'application/vnd.oasis.opendocument.presentation', // ODP
     'application/rtf', // RTF
   ];
 
