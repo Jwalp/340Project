@@ -1,3 +1,4 @@
+/* frontend/src/app/components/my-files/my-files.css - Updated styling */
 .files-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #1a0b2e 0%, #2d1b4e 50%, #1a0b2e 100%);
@@ -211,7 +212,6 @@
   margin-bottom: 20px;
 }
 
-/* Empty Upload Button */
 .empty-upload-btn {
   display: inline-flex;
   align-items: center;
@@ -313,7 +313,6 @@
   font-size: 0.85rem;
 }
 
-/* Keep Status Badge */
 .file-status {
   display: inline-flex;
   align-items: center;
@@ -359,7 +358,6 @@
   justify-content: center;
 }
 
-/* Keep Toggle Button */
 .keep-btn {
   background: rgba(0, 255, 136, 0.15);
   color: #8a8a9e;
@@ -530,7 +528,6 @@
   border-radius: 10px;
 }
 
-/* Document Viewer - For all document types */
 .document-viewer {
   width: 100%;
   height: 100%;
@@ -565,7 +562,6 @@
   background: #fff;
 }
 
-/* Text Viewer */
 .text-viewer {
   width: 100%;
   height: 100%;
@@ -586,123 +582,6 @@
   margin: 0;
 }
 
-/* EPUB Viewer Container */
-.epub-viewer-container {
-  width: 100%;
-  height: 100%;
-  min-height: 600px;
-  overflow: hidden;
-  background: #fff;
-  border: 2px solid rgba(0, 255, 136, 0.3);
-  border-radius: 10px;
-  position: relative;
-}
-
-/* ODF Viewer Container */
-.odf-viewer-container {
-  width: 100%;
-  height: 100%;
-  min-height: 500px;
-  overflow: auto;
-  background: #fff;
-  border: 2px solid rgba(0, 255, 136, 0.3);
-  border-radius: 10px;
-  padding: 20px;
-}
-
-.odf-viewer-container canvas {
-  max-width: 100%;
-  height: auto;
-}
-
-/* DOCX Viewer */
-.docx-viewer {
-  width: 100%;
-  height: 100%;
-  min-height: 500px;
-  overflow: auto;
-  background: #fff;
-  border: 2px solid rgba(0, 255, 136, 0.3);
-  border-radius: 10px;
-  padding: 40px;
-  color: #000;
-  font-family: Arial, sans-serif;
-  line-height: 1.6;
-}
-
-.docx-viewer p {
-  margin: 1em 0;
-}
-
-.docx-viewer h1, .docx-viewer h2, .docx-viewer h3 {
-  margin-top: 1.5em;
-  margin-bottom: 0.5em;
-}
-
-.docx-viewer table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 1em 0;
-}
-
-.docx-viewer td, .docx-viewer th {
-  border: 1px solid #ddd;
-  padding: 8px;
-}
-
-/* XLSX Viewer */
-.xlsx-viewer-wrapper {
-  width: 100%;
-  height: 100%;
-  min-height: 500px;
-  overflow: auto;
-  background: #fff;
-  border: 2px solid rgba(0, 255, 136, 0.3);
-  border-radius: 10px;
-  padding: 20px;
-}
-
-.xlsx-sheet {
-  margin-bottom: 30px;
-}
-
-.sheet-name {
-  color: #1a0b2e;
-  font-size: 1.3rem;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #00ff88;
-}
-
-.xlsx-viewer-wrapper table {
-  border-collapse: collapse;
-  width: 100%;
-  background: #fff;
-  font-size: 0.9rem;
-}
-
-.xlsx-viewer-wrapper th {
-  background: #f0f0f0;
-  font-weight: 600;
-  padding: 10px;
-  border: 1px solid #ddd;
-  text-align: left;
-}
-
-.xlsx-viewer-wrapper td {
-  padding: 8px 10px;
-  border: 1px solid #ddd;
-}
-
-.xlsx-viewer-wrapper tr:nth-child(even) {
-  background: #f9f9f9;
-}
-
-.xlsx-viewer-wrapper tr:hover {
-  background: #f0f0f0;
-}
-
-/* Office Document Preview */
 .office-doc-preview {
   text-align: center;
   padding: 40px;
@@ -716,8 +595,8 @@
 
 .office-icon {
   font-size: 5rem;
-  color: #2b7cd3;
-  filter: drop-shadow(0 4px 8px rgba(43, 124, 211, 0.3));
+  color: #00ff88;
+  filter: drop-shadow(0 4px 8px rgba(0, 255, 136, 0.3));
 }
 
 .office-doc-preview h4 {
@@ -767,7 +646,6 @@
   color: #00ff88;
 }
 
-/* Document Preview - For unsupported types */
 .document-preview {
   text-align: center;
   padding: 40px;
@@ -797,7 +675,6 @@
   margin-bottom: 30px !important;
 }
 
-/* Document Error */
 .document-error {
   text-align: center;
   padding: 40px;

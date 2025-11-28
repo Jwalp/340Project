@@ -1,4 +1,4 @@
-<!-- frontend/src/app/components/my-files/my-files.html - With Universal Document Preview -->
+<!-- frontend/src/app/components/my-files/my-files.html - Updated without PowerPoint -->
 <div class="files-page">
   <main class="files-container">
     <div class="files-header">
@@ -204,49 +204,52 @@
           </iframe>
 
           <!-- Microsoft Office Document Download Prompt -->
-          <div *ngIf="!isLoadingPreview && isMicrosoftOffice(viewingFile) && !documentError" class="office-doc-preview">
+          <div *ngIf="!isLoadingPreview && (isDocxDocument(viewingFile) || isXlsxDocument(viewingFile) || isMicrosoftOffice(viewingFile)) && !documentError" class="office-doc-preview">
             <div class="office-icon-wrapper">
-              <i class="fa-solid fa-file-word office-icon"></i>
+              <i class="fa-solid" 
+                 [ngClass]="isDocxDocument(viewingFile) ? 'fa-file-word' : 
+                            isXlsxDocument(viewingFile) ? 'fa-file-excel' : 
+                            'fa-file-lines'" 
+                 class="office-icon"></i>
             </div>
             <h4>{{ getOfficeDocumentType(viewingFile) }}</h4>
             <p class="filename">{{ viewingFile.filename }}</p>
             <p class="file-size-display">{{ formatFileSize(viewingFile.size) }}</p>
             <p class="office-hint">
-              This {{ getOfficeDocumentType(viewingFile) }} needs to be downloaded to view its contents.
-              Click the button below to download and open it with Microsoft Office, LibreOffice, or Google Docs.
+              Browser preview is not available for this file format. Download the file to view it with compatible applications.
             </p>
             <div class="office-actions">
               <button class="btn-primary btn-large" (click)="downloadFile(viewingFile)">
                 <i class="fa-solid fa-download"></i>
-                Download to View
+                Download File
               </button>
             </div>
             <p class="office-apps">
-              <strong>Compatible with:</strong> Microsoft Word, Excel, PowerPoint, LibreOffice, Google Docs
+              <strong>Compatible with:</strong> Microsoft Office, LibreOffice, Google Docs/Sheets, Apple iWork
             </p>
           </div>
 
           <!-- Unsupported Document Type -->
-          <div *ngIf="!isLoadingPreview && !isPDF(viewingFile) && !isOfficeDocument(viewingFile) && !isTextDocument(viewingFile) && !isHTMLDocument(viewingFile) && !documentError"
+          <div *ngIf="!isLoadingPreview && !isPDF(viewingFile) && !isDocxDocument(viewingFile) && !isXlsxDocument(viewingFile) && !isMicrosoftOffice(viewingFile) && !isOfficeDocument(viewingFile) && !isTextDocument(viewingFile) && !isHTMLDocument(viewingFile) && !documentError"
                class="document-preview">
             <i class="fa-solid fa-file-lines preview-icon"></i>
             <p>{{ viewingFile.filename }}</p>
-            <p class="preview-hint">Preview not available for this document type</p>
-            <p class="supported-formats">{{ getSupportedFormatsText() }}</p>
+            <p class="preview-hint">Browser preview not available for this file type</p>
+            <p class="supported-formats">Supported previews: PDF, TXT, MD, HTML, CSS, JSON, XML, CSV</p>
             <button class="btn-primary" (click)="downloadFile(viewingFile)">
               <i class="fa-solid fa-download"></i>
-              Download to View
+              Download File
             </button>
           </div>
 
           <!-- Error State -->
           <div *ngIf="documentError" class="document-error">
             <i class="fa-solid fa-triangle-exclamation error-icon"></i>
-            <p>Failed to load document</p>
+            <p>Unable to load document preview</p>
             <p class="error-message">{{ documentError }}</p>
             <button class="btn-primary" (click)="downloadFile(viewingFile)">
               <i class="fa-solid fa-download"></i>
-              Download Instead
+              Download File
             </button>
           </div>
         </div>

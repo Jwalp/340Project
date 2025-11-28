@@ -1,4 +1,3 @@
-// backend/controllers/fileController.js - FIXED .ico + Keep Toggle
 const File = require('../models/File');
 const mongoose = require('mongoose');
 const { Readable } = require('stream');
@@ -73,10 +72,10 @@ const FILE_TYPES = {
 const EXTENSION_CATEGORIES = {
   // Documents
   pdf: 'document', doc: 'document', docx: 'document',
-  xls: 'document', xlsx: 'document', ppt: 'document', pptx: 'document',
+  xls: 'document', xlsx: 'document',
   txt: 'document', md: 'document', markdown: 'document',
   html: 'document', htm: 'document', css: 'document', csv: 'document',
-  rtf: 'document', odt: 'document', ods: 'document', odp: 'document',
+  rtf: 'document', odt: 'document', ods: 'document',
   epub: 'document', xml: 'document', json: 'document',
   
   // Images

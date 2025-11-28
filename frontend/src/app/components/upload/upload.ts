@@ -1,4 +1,3 @@
-// frontend/src/app/components/upload/upload.ts - With keepPermanently checkbox
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -36,9 +35,9 @@ export class UploadComponent {
   };
 
   private allAcceptedExtensions = [
-    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx',
     '.txt', '.md', '.markdown', '.html', '.htm', '.css', '.csv',
-    '.rtf', '.odt', '.ods', '.odp', '.epub', '.xml', '.json',
+    '.rtf', '.odt', '.ods', '.epub', '.xml', '.json',
     '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', 
     '.heic', '.heif', '.ico', '.icon',
     '.mp3', '.wav', '.ogg', '.aac', '.flac', '.m4a', '.webm',

@@ -1,4 +1,3 @@
-// frontend/src/app/components/my-files/my-files.ts - With ALL Document Format Support
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -8,8 +7,6 @@ import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl, SafeResourceUrl } from '@angular/platform-browser';
 
 declare var odf: any;
-declare var mammoth: any;
-declare var XLSX: any;
 declare var ePub: any;
 
 @Component({
@@ -33,8 +30,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
   private epubRendition: any = null;
   private scriptsLoaded = {
     webodf: false,
-    mammoth: false,
-    xlsx: false,
     epub: false
   };
   
@@ -46,7 +41,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
   isLoadingPreview = false;
   documentError: string | null = null;
   showOfficeDocDownload = false;
-  renderedDocumentHtml: any = null;
 
   // Supported formats
   private textFormats = [
@@ -81,12 +75,9 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     'application/epub+zip', // EPUB
   ];
 
-  // PowerPoint and other formats - need download
+  // Formats that need download (old DOC, RTF, etc.)
   private microsoftOfficeFormats = [
-    'application/msword', // DOC
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation', // PPTX
-    'application/vnd.oasis.opendocument.text', // ODT
-    'application/vnd.oasis.opendocument.spreadsheet', // ODS
+    'application/msword', // DOC (old format)
     'application/rtf', // RTF
   ];
 
@@ -144,22 +135,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
       document.head.appendChild(webodfScript);
     }
 
-    // Load Mammoth for DOCX
-    if (!this.scriptsLoaded.mammoth && typeof mammoth === 'undefined') {
-      const mammothScript = document.createElement('script');
-      mammothScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
-      mammothScript.onload = () => { this.scriptsLoaded.mammoth = true; };
-      document.head.appendChild(mammothScript);
-    }
-
-    // Load SheetJS for XLSX
-    if (!this.scriptsLoaded.xlsx && typeof XLSX === 'undefined') {
-      const xlsxScript = document.createElement('script');
-      xlsxScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      xlsxScript.onload = () => { this.scriptsLoaded.xlsx = true; };
-      document.head.appendChild(xlsxScript);
-    }
-
     // Load Epub.js for EPUB
     if (!this.scriptsLoaded.epub && typeof ePub === 'undefined') {
       const epubScript = document.createElement('script');
@@ -181,7 +156,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     this.textContent = null;
     this.documentError = null;
     this.showOfficeDocDownload = false;
-    this.renderedDocumentHtml = null;
   }
 
   loadFiles() {
@@ -275,23 +249,10 @@ export class MyFilesComponent implements OnInit, OnDestroy {
         }
       });
     } 
-    else if (this.docxFormats.includes(file.mimeType)) {
-      this.fileService.downloadFile(file.id).subscribe({
-        next: (blob) => this.renderDocxDocument(blob),
-        error: () => {
-          this.documentError = 'Failed to load document preview';
-          this.isLoadingPreview = false;
-        }
-      });
-    }
-    else if (this.xlsxFormats.includes(file.mimeType)) {
-      this.fileService.downloadFile(file.id).subscribe({
-        next: (blob) => this.renderXlsxDocument(blob),
-        error: () => {
-          this.documentError = 'Failed to load spreadsheet preview';
-          this.isLoadingPreview = false;
-        }
-      });
+    else if (this.docxFormats.includes(file.mimeType) || this.xlsxFormats.includes(file.mimeType)) {
+      // Show download prompt for Microsoft Office files
+      this.showOfficeDocDownload = true;
+      this.isLoadingPreview = false;
     }
     else if (this.epubFormats.includes(file.mimeType)) {
       this.fileService.downloadFile(file.id).subscribe({
@@ -351,72 +312,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     else {
       this.isLoadingPreview = false;
     }
-  }
-
-  renderDocxDocument(blob: Blob) {
-    const checkMammoth = () => {
-      if (typeof mammoth !== 'undefined') {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const arrayBuffer = e.target?.result as ArrayBuffer;
-          if (arrayBuffer) {
-            mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
-              .then((result: any) => {
-                this.renderedDocumentHtml = this.sanitizer.bypassSecurityTrustHtml(result.value);
-                this.isLoadingPreview = false;
-              })
-              .catch(() => {
-                this.documentError = 'Failed to render Word document';
-                this.isLoadingPreview = false;
-              });
-          }
-        };
-        reader.onerror = () => {
-          this.documentError = 'Failed to read document file';
-          this.isLoadingPreview = false;
-        };
-        reader.readAsArrayBuffer(blob);
-      } else {
-        setTimeout(checkMammoth, 100);
-      }
-    };
-    checkMammoth();
-  }
-
-  renderXlsxDocument(blob: Blob) {
-    const checkXLSX = () => {
-      if (typeof XLSX !== 'undefined') {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const data = e.target?.result;
-          if (data) {
-            try {
-              const workbook = XLSX.read(data, { type: 'array' });
-              let html = '<div class="xlsx-viewer">';
-              workbook.SheetNames.forEach((sheetName: string) => {
-                const sheet = workbook.Sheets[sheetName];
-                const htmlTable = XLSX.utils.sheet_to_html(sheet, { header: '', footer: '' });
-                html += `<div class="xlsx-sheet"><h3 class="sheet-name">${sheetName}</h3>${htmlTable}</div>`;
-              });
-              html += '</div>';
-              this.renderedDocumentHtml = this.sanitizer.bypassSecurityTrustHtml(html);
-              this.isLoadingPreview = false;
-            } catch (error) {
-              this.documentError = 'Failed to render spreadsheet';
-              this.isLoadingPreview = false;
-            }
-          }
-        };
-        reader.onerror = () => {
-          this.documentError = 'Failed to read spreadsheet file';
-          this.isLoadingPreview = false;
-        };
-        reader.readAsArrayBuffer(blob);
-      } else {
-        setTimeout(checkXLSX, 100);
-      }
-    };
-    checkXLSX();
   }
 
   renderEpubDocument(blob: Blob) {
@@ -508,8 +403,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     if (file.fileType !== 'document') return false;
     return file.mimeType === 'application/pdf' || 
            file.mimeType === 'text/html' ||
-           this.docxFormats.includes(file.mimeType) ||
-           this.xlsxFormats.includes(file.mimeType) ||
            this.epubFormats.includes(file.mimeType) ||
            this.openDocumentFormats.includes(file.mimeType) ||
            this.textFormats.includes(file.mimeType);
@@ -527,9 +420,8 @@ export class MyFilesComponent implements OnInit, OnDestroy {
 
   getOfficeDocumentType(file: FileData): string {
     const mimeType = file.mimeType;
-    if (mimeType.includes('word')) return 'Word Document';
-    if (mimeType.includes('sheet') || mimeType.includes('excel')) return 'Spreadsheet';
-    if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'Presentation';
+    if (mimeType.includes('word') || mimeType.includes('document') || mimeType === 'application/msword') return 'Word Document';
+    if (mimeType.includes('sheet') || mimeType.includes('excel')) return 'Excel Spreadsheet';
     if (mimeType.includes('rtf')) return 'Rich Text Document';
     return 'Office Document';
   }
@@ -597,6 +489,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
   }
 
   getSupportedFormatsText(): string {
-    return 'PDF, Word (DOCX), Excel (XLSX), EPUB, ODT, ODS, ODP, TXT, MD, HTML, CSS, JSON, XML, CSV - all can be previewed! PowerPoint (PPTX, PPT), DOC, and RTF need to be downloaded.';
+    return 'Inline preview available for: PDF, EPUB, ODT, ODS, ODP, TXT, MD, HTML, CSS, JSON, XML, CSV. Download required for: DOCX, XLSX, DOC, XLS, RTF.';
   }
 }
