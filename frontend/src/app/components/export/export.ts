@@ -1,15 +1,283 @@
 // frontend/src/app/components/export/export.ts
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { FileService, FileData } from '../../services/file.service';
+import { ExportService } from '../../services/export.service';
+import { ToastService } from '../../services/toast.service';
+
+interface ConversionJob {
+  file: FileData;
+  targetFormat: string;
+  status: 'pending' | 'processing' | 'complete' | 'error';
+  progress: number;
+  error?: string;
+  result?: Blob;
+}
 
 @Component({
   selector: 'app-export',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './export.html',
   styleUrls: ['./export.css']
 })
-export class ExportComponent {
-  constructor() {}
+export class ExportComponent implements OnInit {
+  files: FileData[] = [];
+  selectedFile: FileData | null = null;
+  selectedCategory: 'image' | 'audio' | 'video' | 'document' | null = null;
+  targetFormat = '';
+  isLoading = false;
+  ffmpegReady = false;
+  
+  // Conversion options
+  imageQuality = 90;
+  audioBitrate = '192k';
+  videoWidth = 0;
+  videoHeight = 0;
+  videoBitrate = '1M';
+  
+  // Document editing
+  showDocumentEditor = false;
+  documentContent = '';
+  isLoadingDocument = false;
+  originalDocumentContent = '';
+  
+  // Conversion jobs
+  conversionJobs: ConversionJob[] = [];
+  
+  constructor(
+    private fileService: FileService,
+    private exportService: ExportService,
+    private toastService: ToastService
+  ) {}
+
+  ngOnInit() {
+    this.loadFiles();
+    this.checkFFmpegStatus();
+  }
+
+  checkFFmpegStatus() {
+    const interval = setInterval(() => {
+      if (this.exportService.isFFmpegReady()) {
+        this.ffmpegReady = true;
+        clearInterval(interval);
+      }
+    }, 1000);
+    
+    setTimeout(() => {
+      clearInterval(interval);
+      if (!this.ffmpegReady) {
+        this.toastService.warning('Media conversion may be limited');
+      }
+    }, 30000);
+  }
+
+  loadFiles() {
+    this.isLoading = true;
+    this.fileService.getFiles().subscribe({
+      next: (files) => {
+        this.files = files;
+        this.isLoading = false;
+      },
+      error: () => {
+        this.toastService.error('Failed to load files');
+        this.isLoading = false;
+      }
+    });
+  }
+
+  selectFile(file: FileData) {
+    this.selectedFile = file;
+    this.selectedCategory = file.fileType as any;
+    this.targetFormat = '';
+    this.showDocumentEditor = false;
+    this.documentContent = '';
+    this.originalDocumentContent = '';
+    
+    // Auto-load document content for editing
+    if (file.fileType === 'document') {
+      this.loadDocumentForEditing();
+    }
+  }
+
+  async loadDocumentForEditing() {
+    if (!this.selectedFile) return;
+    
+    this.isLoadingDocument = true;
+    this.showDocumentEditor = true;
+    
+    try {
+      this.documentContent = await this.exportService.extractEditableText(this.selectedFile);
+      this.originalDocumentContent = this.documentContent;
+      this.toastService.success('Document loaded for editing');
+    } catch (error: any) {
+      this.toastService.error('Failed to load document: ' + (error.message || 'Unknown error'));
+      this.showDocumentEditor = false;
+    } finally {
+      this.isLoadingDocument = false;
+    }
+  }
+
+  resetDocumentContent() {
+    this.documentContent = this.originalDocumentContent;
+    this.toastService.info('Document content reset');
+  }
+
+  getAvailableFormats(): string[] {
+    if (!this.selectedCategory) return [];
+    
+    switch (this.selectedCategory) {
+      case 'image':
+        return this.exportService.imageFormats;
+      case 'audio':
+        return this.exportService.audioFormats;
+      case 'video':
+        return [...this.exportService.videoFormats, 'mp3'];
+      case 'document':
+        return this.exportService.documentFormats;
+      default:
+        return [];
+    }
+  }
+
+  getDocumentEditingSupported(): boolean {
+    if (!this.selectedFile) return false;
+    
+    const supportedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLSX
+      'application/vnd.ms-excel', // XLS
+      'text/plain',
+      'text/html',
+      'text/markdown',
+      'text/csv',
+      'application/json',
+      'application/xml',
+      'text/xml',
+      'application/vnd.oasis.opendocument.text' // ODT
+    ];
+    
+    return supportedTypes.includes(this.selectedFile.mimeType);
+  }
+
+  async startConversion() {
+    if (!this.selectedFile || !this.targetFormat) {
+      this.toastService.error('Please select a file and target format');
+      return;
+    }
+
+    const job: ConversionJob = {
+      file: this.selectedFile,
+      targetFormat: this.targetFormat,
+      status: 'processing',
+      progress: 0
+    };
+
+    this.conversionJobs.unshift(job);
+
+    try {
+      let result: Blob;
+      
+      if (this.selectedCategory === 'image') {
+        result = await this.exportService.convertImage(
+          this.selectedFile,
+          this.targetFormat,
+          this.imageQuality
+        );
+      } else if (this.selectedCategory === 'audio') {
+        result = await this.exportService.convertAudio(
+          this.selectedFile,
+          this.targetFormat,
+          this.audioBitrate
+        );
+      } else if (this.selectedCategory === 'video') {
+        if (this.targetFormat === 'mp3') {
+          result = await this.exportService.extractAudio(this.selectedFile, 'mp3');
+        } else {
+          result = await this.exportService.convertVideo(
+            this.selectedFile,
+            this.targetFormat,
+            {
+              width: this.videoWidth || undefined,
+              height: this.videoHeight || undefined,
+              bitrate: this.videoBitrate
+            }
+          );
+        }
+      } else if (this.selectedCategory === 'document') {
+        result = await this.exportService.convertDocument(
+          this.selectedFile,
+          this.targetFormat,
+          this.documentContent // Use edited content
+        );
+      } else {
+        throw new Error('Unsupported file type');
+      }
+
+      job.status = 'complete';
+      job.progress = 100;
+      job.result = result;
+      
+      const newFilename = this.getConvertedFilename(this.selectedFile.filename, this.targetFormat);
+      this.exportService.downloadConvertedFile(result, newFilename);
+      
+      this.toastService.success(`Converted to ${this.targetFormat.toUpperCase()} successfully!`);
+    } catch (error: any) {
+      job.status = 'error';
+      job.error = error.message || 'Conversion failed';
+      this.toastService.error('Conversion failed: ' + job.error);
+    }
+  }
+
+  getConvertedFilename(originalFilename: string, targetFormat: string): string {
+    const baseName = originalFilename.substring(0, originalFilename.lastIndexOf('.')) || originalFilename;
+    return `${baseName}_converted.${targetFormat}`;
+  }
+
+  removeJob(job: ConversionJob) {
+    this.conversionJobs = this.conversionJobs.filter(j => j !== job);
+  }
+
+  getFilesByType(type: 'image' | 'audio' | 'video' | 'document'): FileData[] {
+    return this.files.filter(f => f.fileType === type);
+  }
+
+  formatFileSize(bytes: number): string {
+    return this.fileService.formatFileSize(bytes);
+  }
+
+  getCategoryIcon(category: string): string {
+    switch (category) {
+      case 'image': return 'fa-file-image';
+      case 'audio': return 'fa-file-audio';
+      case 'video': return 'fa-file-video';
+      case 'document': return 'fa-file-lines';
+      default: return 'fa-file';
+    }
+  }
+
+  getFormatIcon(format: string): string {
+    if (this.exportService.imageFormats.includes(format)) return '🖼️';
+    if (this.exportService.audioFormats.includes(format)) return '🎵';
+    if (this.exportService.videoFormats.includes(format)) return '🎬';
+    if (this.exportService.documentFormats.includes(format)) return '📄';
+    return '📁';
+  }
+
+  getWordCount(): number {
+    if (!this.documentContent) return 0;
+    return this.documentContent.trim().split(/\s+/).length;
+  }
+
+  getCharacterCount(): number {
+    return this.documentContent.length;
+  }
+
+  getLineCount(): number {
+    if (!this.documentContent) return 0;
+    return this.documentContent.split('\n').length;
+  }
 }

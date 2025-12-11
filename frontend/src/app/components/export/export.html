@@ -2,25 +2,262 @@
 <div class="export-page">
   <main class="export-container">
     <div class="export-header">
-      <h1>🔄 Export Files</h1>
-      <p class="subtitle">Convert and export your files to different formats</p>
-    </div>
-
-    <div class="coming-soon-card">
-      <i class="fa-solid fa-wand-magic-sparkles feature-icon"></i>
-      <h2>Coming Soon!</h2>
-      <p>File conversion and export features are currently under development.</p>
-      <p class="feature-list">We're working on supporting conversions between:</p>
-      <div class="format-badges">
-        <span class="format-badge">📄 PDF ↔ Word</span>
-        <span class="format-badge">🖼️ Image Formats</span>
-        <span class="format-badge">🎵 Audio Formats</span>
-        <span class="format-badge">🎬 Video Formats</span>
+      <h1>🔄 Export & Convert Files</h1>
+      <p class="subtitle">Convert your files between different formats</p>
+      <div class="ffmpeg-status" *ngIf="!ffmpegReady && !isLoading">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>Loading conversion engine...</span>
+      </div>
+      <div class="ffmpeg-status ready" *ngIf="ffmpegReady">
+        <i class="fa-solid fa-check-circle"></i>
+        <span>Conversion engine ready</span>
       </div>
     </div>
 
+    <!-- Conversion Jobs -->
+    <div class="conversion-jobs" *ngIf="conversionJobs.length > 0">
+      <h2>🔄 Conversion History</h2>
+      <div class="jobs-list">
+        <div class="job-card" *ngFor="let job of conversionJobs" [class]="'status-' + job.status">
+          <div class="job-header">
+            <span class="job-file">{{ job.file.filename }}</span>
+            <span class="job-arrow">→</span>
+            <span class="job-format">{{ job.targetFormat.toUpperCase() }}</span>
+            <button class="job-close" (click)="removeJob(job)">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="job-status">
+            <i class="fa-solid fa-spinner fa-spin" *ngIf="job.status === 'processing'"></i>
+            <i class="fa-solid fa-check-circle" *ngIf="job.status === 'complete'"></i>
+            <i class="fa-solid fa-triangle-exclamation" *ngIf="job.status === 'error'"></i>
+            <span *ngIf="job.status === 'processing'">Converting...</span>
+            <span *ngIf="job.status === 'complete'">Complete</span>
+            <span *ngIf="job.status === 'error'">{{ job.error }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- File Selection -->
+    <div class="converter-section">
+      <h2>📁 Select File to Convert</h2>
+      
+      <div class="category-selector">
+        <button class="category-btn" 
+                [class.active]="selectedCategory === 'image'"
+                (click)="selectedCategory = 'image'; selectedFile = null">
+          <i class="fa-solid fa-file-image"></i>
+          <span>Images</span>
+          <span class="count">{{ getFilesByType('image').length }}</span>
+        </button>
+        <button class="category-btn" 
+                [class.active]="selectedCategory === 'audio'"
+                (click)="selectedCategory = 'audio'; selectedFile = null">
+          <i class="fa-solid fa-file-audio"></i>
+          <span>Audio</span>
+          <span class="count">{{ getFilesByType('audio').length }}</span>
+        </button>
+        <button class="category-btn" 
+                [class.active]="selectedCategory === 'video'"
+                (click)="selectedCategory = 'video'; selectedFile = null">
+          <i class="fa-solid fa-file-video"></i>
+          <span>Video</span>
+          <span class="count">{{ getFilesByType('video').length }}</span>
+        </button>
+        <button class="category-btn" 
+                [class.active]="selectedCategory === 'document'"
+                (click)="selectedCategory = 'document'; selectedFile = null">
+          <i class="fa-solid fa-file-lines"></i>
+          <span>Documents</span>
+          <span class="count">{{ getFilesByType('document').length }}</span>
+        </button>
+      </div>
+
+      <!-- File List -->
+      <div class="file-list" *ngIf="selectedCategory">
+        <div class="file-item" 
+             *ngFor="let file of getFilesByType(selectedCategory)"
+             [class.selected]="selectedFile?.id === file.id"
+             (click)="selectFile(file)">
+          <i class="fa-solid {{ getCategoryIcon(file.fileType) }}"></i>
+          <div class="file-item-info">
+            <span class="file-item-name">{{ file.filename }}</span>
+            <span class="file-item-size">{{ formatFileSize(file.size) }}</span>
+          </div>
+          <i class="fa-solid fa-check-circle" *ngIf="selectedFile?.id === file.id"></i>
+        </div>
+        <div class="empty-list" *ngIf="getFilesByType(selectedCategory).length === 0">
+          <i class="fa-solid fa-folder-open"></i>
+          <p>No {{ selectedCategory }} files found</p>
+          <a routerLink="/upload" class="btn-link">Upload Files</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conversion Options -->
+    <div class="converter-options" *ngIf="selectedFile">
+      <h2>⚙️ Conversion Settings</h2>
+      
+      <div class="selected-file-info">
+        <i class="fa-solid {{ getCategoryIcon(selectedFile.fileType) }}"></i>
+        <div>
+          <strong>{{ selectedFile.filename }}</strong>
+          <span>{{ formatFileSize(selectedFile.size) }}</span>
+        </div>
+      </div>
+
+      <!-- Format Selection -->
+      <div class="format-selection">
+        <label>Target Format:</label>
+        <div class="format-grid">
+          <button class="format-btn" 
+                  *ngFor="let format of getAvailableFormats()"
+                  [class.active]="targetFormat === format"
+                  (click)="targetFormat = format">
+            <span class="format-icon">{{ getFormatIcon(format) }}</span>
+            <span class="format-name">{{ format.toUpperCase() }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Image Options -->
+      <div class="conversion-settings" *ngIf="selectedCategory === 'image' && targetFormat">
+        <h3>Image Quality</h3>
+        <div class="slider-control">
+          <input type="range" 
+                 min="1" 
+                 max="100" 
+                 [(ngModel)]="imageQuality"
+                 class="slider">
+          <span class="slider-value">{{ imageQuality }}%</span>
+        </div>
+      </div>
+
+      <!-- Audio Options -->
+      <div class="conversion-settings" *ngIf="selectedCategory === 'audio' && targetFormat">
+        <h3>Audio Bitrate</h3>
+        <select [(ngModel)]="audioBitrate" class="select-control">
+          <option value="128k">128 kbps</option>
+          <option value="192k">192 kbps (Recommended)</option>
+          <option value="256k">256 kbps</option>
+          <option value="320k">320 kbps (High Quality)</option>
+        </select>
+      </div>
+
+      <!-- Video Options -->
+      <div class="conversion-settings" *ngIf="selectedCategory === 'video' && targetFormat && targetFormat !== 'mp3'">
+        <h3>Video Settings</h3>
+        <div class="settings-grid">
+          <div class="setting-item">
+            <label>Width (optional):</label>
+            <input type="number" 
+                   [(ngModel)]="videoWidth" 
+                   placeholder="Auto"
+                   class="input-control">
+          </div>
+          <div class="setting-item">
+            <label>Height (optional):</label>
+            <input type="number" 
+                   [(ngModel)]="videoHeight" 
+                   placeholder="Auto"
+                   class="input-control">
+          </div>
+          <div class="setting-item full-width">
+            <label>Bitrate:</label>
+            <select [(ngModel)]="videoBitrate" class="select-control">
+              <option value="500k">500 kbps (Low)</option>
+              <option value="1M">1 Mbps (Medium)</option>
+              <option value="2M">2 Mbps (High)</option>
+              <option value="5M">5 Mbps (Very High)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Video to Audio -->
+      <div class="conversion-settings" *ngIf="selectedCategory === 'video' && targetFormat === 'mp3'">
+        <div class="info-box">
+          <i class="fa-solid fa-info-circle"></i>
+          <p>Extract audio from video file as MP3</p>
+        </div>
+      </div>
+
+      <!-- Document Editor (Always visible for documents) -->
+      <div class="document-editor-section" *ngIf="selectedCategory === 'document'">
+        <div class="editor-header">
+          <h3>
+            <i class="fa-solid fa-edit"></i>
+            Document Editor
+          </h3>
+          <div class="editor-stats" *ngIf="!isLoadingDocument && documentContent">
+            <span class="stat-item">
+              <i class="fa-solid fa-font"></i>
+              {{ getWordCount() }} words
+            </span>
+            <span class="stat-item">
+              <i class="fa-solid fa-a"></i>
+              {{ getCharacterCount() }} chars
+            </span>
+            <span class="stat-item">
+              <i class="fa-solid fa-align-left"></i>
+              {{ getLineCount() }} lines
+            </span>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="editor-loading" *ngIf="isLoadingDocument">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          <p>Extracting text from document...</p>
+        </div>
+
+        <!-- Editor -->
+        <div class="editor-container" *ngIf="!isLoadingDocument && showDocumentEditor">
+          <div class="editor-toolbar">
+            <button class="toolbar-btn" (click)="resetDocumentContent()" title="Reset to original">
+              <i class="fa-solid fa-rotate-left"></i>
+              Reset
+            </button>
+            <div class="toolbar-info">
+              <i class="fa-solid fa-circle-info"></i>
+              Edit your document content before converting
+            </div>
+          </div>
+          
+          <textarea [(ngModel)]="documentContent" 
+                    class="editor-textarea"
+                    placeholder="Document content will appear here..."></textarea>
+          
+          <div class="editor-hints">
+            <div class="hint-item">
+              <i class="fa-solid fa-lightbulb"></i>
+              <span>Make any changes you need before converting to the target format</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Supported Document Types Info -->
+        <div class="supported-docs-info" *ngIf="!isLoadingDocument && !showDocumentEditor">
+          <i class="fa-solid fa-circle-info"></i>
+          <p>Text extraction supported for: PDF, DOCX, XLSX, TXT, HTML, Markdown, CSV, JSON, XML, ODT</p>
+        </div>
+      </div>
+
+      <!-- Convert Button -->
+      <div class="convert-action">
+        <button class="btn-convert" 
+                [disabled]="!targetFormat || !ffmpegReady"
+                (click)="startConversion()">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          Convert to {{ targetFormat.toUpperCase() }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
     <div class="action-buttons">
-      <a routerLink="/my-files" class="btn-primary">
+      <a routerLink="/my-files" class="btn-outline">
         <i class="fa-solid fa-folder-open"></i>
         Back to My Files
       </a>
