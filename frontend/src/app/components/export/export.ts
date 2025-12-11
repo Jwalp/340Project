@@ -59,7 +59,7 @@ export class ExportComponent implements OnInit {
   }
 
   checkFFmpegStatus() {
-    // Check immediately first
+    // Check if already ready
     if (this.exportService.isFFmpegReady()) {
       this.ffmpegReady = true;
       console.log('✅ FFmpeg already loaded');
@@ -67,9 +67,11 @@ export class ExportComponent implements OnInit {
     }
 
     let attempts = 0;
-    const maxAttempts = 30; // 30 seconds max wait
+    const maxAttempts = 60; // 60 seconds max wait
     
-    // Check every second in background
+    console.log('⏳ Waiting for FFmpeg to initialize...');
+    
+    // Check every second
     const interval = setInterval(() => {
       attempts++;
       
@@ -82,6 +84,11 @@ export class ExportComponent implements OnInit {
         clearInterval(interval);
         console.warn('⚠️ FFmpeg took too long to load');
         this.toastService.warning('Media conversion limited. Document conversions still work!');
+      } else {
+        // Log progress every 10 seconds
+        if (attempts % 10 === 0) {
+          console.log(`⏳ Still loading FFmpeg... (${attempts}s elapsed)`);
+        }
       }
     }, 1000);
   }
@@ -178,6 +185,16 @@ export class ExportComponent implements OnInit {
   async startConversion() {
     if (!this.selectedFile || !this.targetFormat) {
       this.toastService.error('Please select a file and target format');
+      return;
+    }
+
+    // Check if FFmpeg is needed for this conversion
+    const needsFFmpeg = this.selectedCategory === 'image' || 
+                        this.selectedCategory === 'audio' || 
+                        this.selectedCategory === 'video';
+
+    if (needsFFmpeg && !this.ffmpegReady) {
+      this.toastService.error('Media conversion engine is still loading. Please wait...');
       return;
     }
 

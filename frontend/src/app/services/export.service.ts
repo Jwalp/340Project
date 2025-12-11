@@ -1,9 +1,12 @@
-// frontend/src/app/services/export.service.ts
+// frontend/src/app/services/export.service.ts - FIXED
 import { Injectable } from '@angular/core';
 import { FileService, FileData } from './file.service';
 import { ToastService } from './toast.service';
 
 // Global declarations for external libraries
+declare const FFmpeg: any;
+declare const FFmpegUtil: any;
+
 declare global {
   interface Window {
     FFmpeg: any;
@@ -44,63 +47,84 @@ export class ExportService {
     this.initFFmpeg();
   }
 
-  private async initFFmpeg() {
-    // Check if FFmpeg script is loaded, if not wait for it
-    const waitForFFmpeg = () => {
-      return new Promise<void>((resolve) => {
-        if (window.FFmpeg) {
+  private async waitForScripts(): Promise<void> {
+    const maxWaitTime = 10000;
+    const checkInterval = 50;
+    const startTime = Date.now();
+
+    return new Promise((resolve) => {
+      const check = () => {
+        const elapsed = Date.now() - startTime;
+
+        // The actual global is FFmpegWASM, not FFmpeg!
+        const ffmpegAvailable = typeof (window as any).FFmpegWASM !== 'undefined';
+        const utilAvailable = typeof (window as any).FFmpegUtil !== 'undefined';
+
+        if (ffmpegAvailable && utilAvailable) {
+          console.log('✅ FFmpeg scripts detected and ready');
+          resolve();
+        } else if (elapsed > maxWaitTime) {
+          console.error('⏱️ FFmpeg scripts timeout after', elapsed, 'ms');
+          console.log('FFmpegWASM available:', ffmpegAvailable);
+          console.log('FFmpegUtil available:', utilAvailable);
           resolve();
         } else {
-          const checkInterval = setInterval(() => {
-            if (window.FFmpeg) {
-              clearInterval(checkInterval);
-              resolve();
-            }
-          }, 100);
-          
-          // Timeout after 30 seconds
-          setTimeout(() => {
-            clearInterval(checkInterval);
-            console.error('FFmpeg script failed to load');
-            resolve();
-          }, 30000);
+          setTimeout(check, checkInterval);
         }
-      });
-    };
+      };
 
+      check();
+    });
+  }
+
+  private async initFFmpeg() {
     try {
-      await waitForFFmpeg();
+      console.log('🔄 Starting FFmpeg initialization...');
       
-      if (!window.FFmpeg) {
-        console.error('FFmpeg not available');
+      // Wait for scripts to be available
+      await this.waitForScripts();
+      
+      // Access FFmpegWASM (not FFmpeg!)
+      const FFmpegModule = (window as any).FFmpegWASM;
+      const FFmpegUtilModule = (window as any).FFmpegUtil;
+
+      if (!FFmpegModule || !FFmpegUtilModule) {
+        console.error('❌ FFmpeg scripts not available after loading');
         return;
       }
 
-      const { FFmpeg } = window.FFmpeg;
+      console.log('📦 FFmpegWASM found:', typeof FFmpegModule);
+      console.log('📦 FFmpegUtil found:', typeof FFmpegUtilModule);
+
+      // FFmpegWASM exports { FFmpeg }
+      const { FFmpeg } = FFmpegModule;
+
       this.ffmpeg = new FFmpeg();
       
       this.ffmpeg.on('log', ({ message }: any) => {
         console.log('FFmpeg:', message);
       });
 
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+      console.log('⏳ Loading FFmpeg core (this may take a moment)...');
       
-      if (!window.FFmpegUtil) {
-        console.error('FFmpegUtil not available');
-        return;
+      // Try loading without custom URLs first - let FFmpeg use its defaults
+      try {
+        await this.ffmpeg.load();
+        this.ffmpegLoaded = true;
+        console.log('✅ FFmpeg loaded with default configuration!');
+      } catch (defaultError) {
+        console.log('⚠️ Default load failed, trying with explicit URLs...');
+        // Fallback to explicit URLs
+        await this.ffmpeg.load({
+          coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+        });
+        this.ffmpegLoaded = true;
+        console.log('✅ FFmpeg loaded with explicit URLs!');
       }
-      
-      const { toBlobURL } = window.FFmpegUtil;
-      
-      await this.ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-      });
-
-      this.ffmpegLoaded = true;
-      console.log('✅ FFmpeg loaded successfully');
     } catch (error) {
       console.error('❌ Failed to load FFmpeg:', error);
+      console.log('💡 Media conversions unavailable. Document conversions will still work.');
       this.ffmpegLoaded = false;
     }
   }
@@ -282,7 +306,7 @@ export class ExportService {
       throw new Error('FFmpeg not loaded');
     }
 
-    const { fetchFile } = window.FFmpegUtil;
+    const { fetchFile } = (window as any).FFmpegUtil;
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
     const inputName = `input.${this.getFileExtension(file.filename)}`;
@@ -323,7 +347,7 @@ export class ExportService {
       throw new Error('FFmpeg not loaded');
     }
 
-    const { fetchFile } = window.FFmpegUtil;
+    const { fetchFile } = (window as any).FFmpegUtil;
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
     const inputName = `input.${this.getFileExtension(file.filename)}`;
@@ -362,7 +386,7 @@ export class ExportService {
       throw new Error('FFmpeg not loaded');
     }
 
-    const { fetchFile } = window.FFmpegUtil;
+    const { fetchFile } = (window as any).FFmpegUtil;
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
     const inputName = `input.${this.getFileExtension(file.filename)}`;
@@ -397,7 +421,7 @@ export class ExportService {
       throw new Error('FFmpeg not loaded');
     }
 
-    const { fetchFile } = window.FFmpegUtil;
+    const { fetchFile } = (window as any).FFmpegUtil;
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
     const inputName = `input.${this.getFileExtension(file.filename)}`;

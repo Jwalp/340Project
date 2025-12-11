@@ -10,16 +10,6 @@
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
-  <!-- FFmpeg.wasm for media conversion -->
-  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
-  <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
-  
-  <!-- WebODF for OpenDocument (ODT, ODS, ODP) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/webodf/0.5.10/webodf.js"></script>
-  
-  <!-- Epub.js for EPUB -->
-  <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
-  
   <!-- PDF.js for PDF viewing and text extraction -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
@@ -37,6 +27,19 @@
   
   <!-- Marked.js for Markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <!-- Epub.js for EPUB (load after DOM) -->
+  <script>
+    // Load Epub.js after page loads
+    window.addEventListener('load', function() {
+      const epubScript = document.createElement('script');
+      epubScript.src = 'https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js';
+      epubScript.onerror = function() {
+        console.warn('Failed to load Epub.js - EPUB preview unavailable');
+      };
+      document.head.appendChild(epubScript);
+    });
+  </script>
   
   <style>
     * {
@@ -111,6 +114,35 @@
       font-size: 0.9rem;
     }
   </style>
+  
+  <!-- Load FFmpeg.wasm AFTER the page loads to avoid blocking -->
+  <script>
+    window.addEventListener('load', function() {
+      console.log('📦 Loading FFmpeg scripts...');
+      
+      // Load FFmpeg core
+      const ffmpegScript = document.createElement('script');
+      ffmpegScript.src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
+      ffmpegScript.onload = function() {
+        console.log('✅ FFmpeg script loaded');
+      };
+      ffmpegScript.onerror = function() {
+        console.error('❌ Failed to load FFmpeg script');
+      };
+      document.head.appendChild(ffmpegScript);
+      
+      // Load FFmpeg util
+      const ffmpegUtilScript = document.createElement('script');
+      ffmpegUtilScript.src = 'https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js';
+      ffmpegUtilScript.onload = function() {
+        console.log('✅ FFmpeg Util script loaded');
+      };
+      ffmpegUtilScript.onerror = function() {
+        console.error('❌ Failed to load FFmpeg Util script');
+      };
+      document.head.appendChild(ffmpegUtilScript);
+    });
+  </script>
 </head>
 <body>
   <!-- Loading Screen -->

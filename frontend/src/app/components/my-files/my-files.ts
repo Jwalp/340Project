@@ -6,7 +6,6 @@ import { ToastService } from '../../services/toast.service';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl, SafeResourceUrl } from '@angular/platform-browser';
 
-declare var odf: any;
 declare var ePub: any;
 
 @Component({
@@ -17,7 +16,6 @@ declare var ePub: any;
   styleUrls: ['./my-files.css']
 })
 export class MyFilesComponent implements OnInit, OnDestroy {
-  @ViewChild('odfContainer') odfContainer!: ElementRef;
   @ViewChild('epubContainer') epubContainer!: ElementRef;
   
   files: FileData[] = [];
@@ -26,10 +24,8 @@ export class MyFilesComponent implements OnInit, OnDestroy {
   selectedCategory: 'all' | 'document' | 'image' | 'audio' | 'video' = 'all';
   searchQuery = '';
   private timeUpdateInterval: any;
-  private odfCanvas: any = null;
   private epubRendition: any = null;
   private scriptsLoaded = {
-    webodf: false,
     epub: false
   };
   
@@ -52,13 +48,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     'text/xml'
   ];
 
-  // OpenDocument formats
-  private openDocumentFormats = [
-    'application/vnd.oasis.opendocument.text', // ODT
-    'application/vnd.oasis.opendocument.spreadsheet', // ODS
-    'application/vnd.oasis.opendocument.presentation', // ODP
-  ];
-
   // DOCX formats
   private docxFormats = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
@@ -75,15 +64,17 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     'application/epub+zip', // EPUB
   ];
 
-  // Formats that need download (old DOC, RTF, etc.)
+  // Formats that need download (old DOC, RTF, ODT, ODS, ODP)
   private microsoftOfficeFormats = [
     'application/msword', // DOC (old format)
     'application/rtf', // RTF
+    'application/vnd.oasis.opendocument.text', // ODT
+    'application/vnd.oasis.opendocument.spreadsheet', // ODS
+    'application/vnd.oasis.opendocument.presentation', // ODP
   ];
 
   // All office formats combined
   private officeFormats = [
-    ...this.openDocumentFormats,
     ...this.docxFormats,
     ...this.xlsxFormats,
     ...this.epubFormats,
@@ -109,13 +100,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     if (this.timeUpdateInterval) {
       clearInterval(this.timeUpdateInterval);
     }
-    // Clean up ODF canvas
-    if (this.odfCanvas) {
-      try {
-        this.odfCanvas.destroy();
-      } catch (e) {}
-      this.odfCanvas = null;
-    }
     // Clean up EPUB rendition
     if (this.epubRendition) {
       try {
@@ -127,19 +111,17 @@ export class MyFilesComponent implements OnInit, OnDestroy {
   }
 
   loadExternalScripts() {
-    // Load WebODF for ODT/ODS/ODP
-    if (!this.scriptsLoaded.webodf && typeof odf === 'undefined') {
-      const webodfScript = document.createElement('script');
-      webodfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/webodf/0.5.10/webodf.js';
-      webodfScript.onload = () => { this.scriptsLoaded.webodf = true; };
-      document.head.appendChild(webodfScript);
-    }
-
-    // Load Epub.js for EPUB
+    // Load Epub.js for EPUB (if not already loaded)
     if (!this.scriptsLoaded.epub && typeof ePub === 'undefined') {
       const epubScript = document.createElement('script');
-      epubScript.src = 'https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js';
-      epubScript.onload = () => { this.scriptsLoaded.epub = true; };
+      epubScript.src = 'https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js';
+      epubScript.onload = () => { 
+        this.scriptsLoaded.epub = true;
+        console.log('✅ Epub.js loaded');
+      };
+      epubScript.onerror = () => {
+        console.warn('⚠️ Failed to load Epub.js - EPUB preview unavailable');
+      };
       document.head.appendChild(epubScript);
     }
   }
@@ -263,15 +245,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
         }
       });
     }
-    else if (this.openDocumentFormats.includes(file.mimeType)) {
-      this.fileService.downloadFile(file.id).subscribe({
-        next: (blob) => this.renderODFDocument(blob),
-        error: () => {
-          this.documentError = 'Failed to load document preview';
-          this.isLoadingPreview = false;
-        }
-      });
-    }
     else if (this.textFormats.includes(file.mimeType)) {
       this.fileService.downloadFile(file.id).subscribe({
         next: (blob) => {
@@ -346,48 +319,7 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     checkEpub();
   }
 
-  renderODFDocument(blob: Blob) {
-    const checkWebODF = () => {
-      if (typeof odf !== 'undefined' && this.odfContainer) {
-        try {
-          const container = this.odfContainer.nativeElement;
-          container.innerHTML = '';
-          const odfCanvas = new odf.OdfCanvas(container);
-          this.odfCanvas = odfCanvas;
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const arrayBuffer = e.target?.result as ArrayBuffer;
-            if (arrayBuffer) {
-              try {
-                odfCanvas.load(new Uint8Array(arrayBuffer));
-                this.isLoadingPreview = false;
-              } catch (error) {
-                this.documentError = 'Failed to render OpenDocument file';
-                this.isLoadingPreview = false;
-              }
-            }
-          };
-          reader.onerror = () => {
-            this.documentError = 'Failed to read document file';
-            this.isLoadingPreview = false;
-          };
-          reader.readAsArrayBuffer(blob);
-        } catch (error) {
-          this.documentError = 'Failed to initialize document viewer';
-          this.isLoadingPreview = false;
-        }
-      } else {
-        setTimeout(checkWebODF, 100);
-      }
-    };
-    checkWebODF();
-  }
-
   closeViewer() {
-    if (this.odfCanvas) {
-      try { this.odfCanvas.destroy(); } catch (e) {}
-      this.odfCanvas = null;
-    }
     if (this.epubRendition) {
       try { this.epubRendition.destroy(); } catch (e) {}
       this.epubRendition = null;
@@ -404,7 +336,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
     return file.mimeType === 'application/pdf' || 
            file.mimeType === 'text/html' ||
            this.epubFormats.includes(file.mimeType) ||
-           this.openDocumentFormats.includes(file.mimeType) ||
            this.textFormats.includes(file.mimeType);
   }
 
@@ -412,17 +343,24 @@ export class MyFilesComponent implements OnInit, OnDestroy {
   isPDF(file: FileData): boolean { return file.mimeType === 'application/pdf'; }
   isHTMLDocument(file: FileData): boolean { return file.mimeType === 'text/html'; }
   isOfficeDocument(file: FileData): boolean { return this.officeFormats.includes(file.mimeType); }
-  isOpenDocument(file: FileData): boolean { return this.openDocumentFormats.includes(file.mimeType); }
   isDocxDocument(file: FileData): boolean { return this.docxFormats.includes(file.mimeType); }
   isXlsxDocument(file: FileData): boolean { return this.xlsxFormats.includes(file.mimeType); }
   isEpubDocument(file: FileData): boolean { return this.epubFormats.includes(file.mimeType); }
   isMicrosoftOffice(file: FileData): boolean { return this.microsoftOfficeFormats.includes(file.mimeType); }
+  isOpenDocument(file: FileData): boolean { 
+    return file.mimeType === 'application/vnd.oasis.opendocument.text' ||
+           file.mimeType === 'application/vnd.oasis.opendocument.spreadsheet' ||
+           file.mimeType === 'application/vnd.oasis.opendocument.presentation';
+  }
 
   getOfficeDocumentType(file: FileData): string {
     const mimeType = file.mimeType;
     if (mimeType.includes('word') || mimeType.includes('document') || mimeType === 'application/msword') return 'Word Document';
     if (mimeType.includes('sheet') || mimeType.includes('excel')) return 'Excel Spreadsheet';
     if (mimeType.includes('rtf')) return 'Rich Text Document';
+    if (mimeType.includes('odt')) return 'OpenDocument Text';
+    if (mimeType.includes('ods')) return 'OpenDocument Spreadsheet';
+    if (mimeType.includes('odp')) return 'OpenDocument Presentation';
     return 'Office Document';
   }
 
@@ -489,6 +427,6 @@ export class MyFilesComponent implements OnInit, OnDestroy {
   }
 
   getSupportedFormatsText(): string {
-    return 'Inline preview available for: PDF, EPUB, ODT, ODS, ODP, TXT, MD, HTML, CSS, JSON, XML, CSV. Download required for: DOCX, XLSX, DOC, XLS, RTF.';
+    return 'Inline preview available for: PDF, EPUB, TXT, MD, HTML, CSS, JSON, XML, CSV. Download required for: DOCX, XLSX, DOC, XLS, RTF, ODT, ODS, ODP.';
   }
 }
