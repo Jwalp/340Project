@@ -16,10 +16,10 @@ declare global {
 })
 export class ExportService {
   // Supported conversions (browser-native only)
-  readonly imageFormats = ['jpg', 'png', 'webp', 'gif', 'bmp', 'ico'];
-  readonly audioFormats = ['mp3', 'wav', 'ogg']; // Limited to browser-supported formats
-  readonly videoFormats = ['mp4', 'webm']; // Limited to browser-supported formats
-  readonly documentFormats = ['pdf', 'txt', 'html', 'md', 'docx', 'csv'];
+  readonly imageFormats = ['png', 'jpg', 'webp', 'bmp', 'ico'];
+  readonly audioFormats = ['mp3', 'wav', 'ogg'];
+  readonly videoFormats = ['mp4', 'webm'];
+  readonly documentFormats = ['txt', 'html', 'md', 'csv', 'docx'];
 
   constructor(
     private fileService: FileService,
@@ -194,24 +194,48 @@ export class ExportService {
             throw new Error('Could not get canvas context');
           }
           
-          // Draw image
+          // Draw image on white background for formats that don't support transparency
+          if (targetFormat === 'jpg' || targetFormat === 'jpeg' || targetFormat === 'bmp') {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+          
           ctx.drawImage(img, 0, 0);
           
           // Convert to target format
           const mimeType = this.getMimeType(targetFormat);
           
-          canvas.toBlob(
-            (resultBlob) => {
-              URL.revokeObjectURL(url);
-              if (resultBlob) {
-                resolve(resultBlob);
-              } else {
-                reject(new Error('Failed to convert image'));
-              }
-            },
-            mimeType,
-            quality
-          );
+          // Special handling for GIF - canvas doesn't directly export to GIF
+          // So we'll export as PNG which browsers handle well
+          if (targetFormat === 'gif') {
+            canvas.toBlob(
+              (resultBlob) => {
+                URL.revokeObjectURL(url);
+                if (resultBlob) {
+                  // Return as PNG but warn user
+                  this.toastService.info('GIF export limited - converting to PNG instead');
+                  resolve(resultBlob);
+                } else {
+                  reject(new Error('Failed to convert image'));
+                }
+              },
+              'image/png',
+              1.0
+            );
+          } else {
+            canvas.toBlob(
+              (resultBlob) => {
+                URL.revokeObjectURL(url);
+                if (resultBlob) {
+                  resolve(resultBlob);
+                } else {
+                  reject(new Error('Failed to convert image'));
+                }
+              },
+              mimeType,
+              quality
+            );
+          }
         } catch (error) {
           URL.revokeObjectURL(url);
           reject(error);
@@ -227,7 +251,7 @@ export class ExportService {
     });
   }
 
-  // ==================== AUDIO CONVERSION (Basic) ====================
+  // ==================== AUDIO CONVERSION (Limited) ====================
   
   async convertAudio(
     file: FileData,
@@ -236,13 +260,12 @@ export class ExportService {
   ): Promise<Blob> {
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
-    // For basic audio conversion, we can't do much without FFmpeg
-    // Just return the original blob with a warning
-    this.toastService.warning('Audio conversion limited without server processing. Downloading original file.');
+    // Browser can't convert audio formats without server-side processing
+    this.toastService.warning(`Audio conversion requires server processing. Downloading original ${file.filename}`);
     return blob!;
   }
 
-  // ==================== VIDEO CONVERSION (Basic) ====================
+  // ==================== VIDEO CONVERSION (Limited) ====================
   
   async convertVideo(
     file: FileData,
@@ -251,15 +274,15 @@ export class ExportService {
   ): Promise<Blob> {
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
-    // Video conversion requires server-side processing or FFmpeg
-    this.toastService.warning('Video conversion limited without server processing. Downloading original file.');
+    // Browser can't convert video formats without server-side processing
+    this.toastService.warning(`Video conversion requires server processing. Downloading original ${file.filename}`);
     return blob!;
   }
 
   async extractAudio(file: FileData, targetFormat: string = 'mp3'): Promise<Blob> {
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
-    this.toastService.warning('Audio extraction limited without server processing. Downloading original file.');
+    this.toastService.warning(`Audio extraction requires server processing. Downloading original ${file.filename}`);
     return blob!;
   }
 
@@ -270,6 +293,9 @@ export class ExportService {
     targetFormat: string,
     editedContent?: string
   ): Promise<Blob> {
+    console.log('Converting document to:', targetFormat);
+    console.log('Has edited content:', !!editedContent);
+    
     const content = editedContent || await this.extractEditableText(file);
     
     if (targetFormat === 'txt') {
@@ -295,14 +321,7 @@ export class ExportService {
       return new Blob([docxHtml], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
     }
     
-    if (targetFormat === 'pdf') {
-      // PDF generation requires a library like jsPDF
-      this.toastService.info('PDF generation coming soon. Converting to HTML instead.');
-      const html = this.textToHTML(content, file.filename);
-      return new Blob([html], { type: 'text/html' });
-    }
-    
-    throw new Error('Unsupported document conversion');
+    throw new Error(`Unsupported document conversion format: ${targetFormat}`);
   }
 
   private textToHTML(text: string, title: string): string {
@@ -395,14 +414,28 @@ ${text.split('\n').map(line => `<p>${this.escapeHtml(line) || '&nbsp;'}</p>`).jo
 
   private getMimeType(format: string): string {
     const mimeTypes: { [key: string]: string } = {
-      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-      webp: 'image/webp', gif: 'image/gif', bmp: 'image/bmp',
-      ico: 'image/x-icon', mp3: 'audio/mpeg', wav: 'audio/wav',
-      ogg: 'audio/ogg', aac: 'audio/aac', m4a: 'audio/m4a',
-      mp4: 'video/mp4', webm: 'video/webm', avi: 'video/x-msvideo',
-      mov: 'video/quicktime', txt: 'text/plain', html: 'text/html',
-      md: 'text/markdown', pdf: 'application/pdf', csv: 'text/csv',
-      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      // Images
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      webp: 'image/webp',
+      gif: 'image/gif',
+      bmp: 'image/bmp',
+      ico: 'image/x-icon',
+      // Audio
+      mp3: 'audio/mpeg',
+      wav: 'audio/wav',
+      ogg: 'audio/ogg',
+      // Video
+      mp4: 'video/mp4',
+      webm: 'video/webm',
+      // Documents
+      txt: 'text/plain',
+      html: 'text/html',
+      md: 'text/markdown',
+      csv: 'text/csv',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      pdf: 'application/pdf'
     };
     return mimeTypes[format] || 'application/octet-stream';
   }

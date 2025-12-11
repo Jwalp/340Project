@@ -3,11 +3,7 @@
   <main class="export-container">
     <div class="export-header">
       <h1>🔄 Export & Convert Files</h1>
-      <p class="subtitle">Convert your files between different formats using browser-native technology</p>
-      <div class="ffmpeg-status ready">
-        <i class="fa-solid fa-check-circle"></i>
-        <span>Conversion engine ready (browser-native)</span>
-      </div>
+      <p class="subtitle">Convert your files between different formats</p>
     </div>
 
     <!-- Conversion Jobs -->
@@ -137,8 +133,11 @@
       <!-- Audio/Video Notice -->
       <div class="conversion-settings" *ngIf="(selectedCategory === 'audio' || selectedCategory === 'video') && targetFormat">
         <div class="info-box" style="background: rgba(255, 165, 0, 0.1); border-color: rgba(255, 165, 0, 0.3);">
-          <i class="fa-solid fa-info-circle" style="color: #ffa500;"></i>
-          <p style="color: #ffa500;">Audio/Video conversions are limited in browser. The original file will be downloaded.</p>
+          <i class="fa-solid fa-circle-info" style="color: #ffa500;"></i>
+          <p style="color: #ffa500;">
+            <strong>Note:</strong> Audio/Video conversions require server-side processing which is not available in this browser-only version. 
+            Your original file will be downloaded instead.
+          </p>
         </div>
       </div>
 
@@ -209,8 +208,13 @@
                 [disabled]="!targetFormat"
                 (click)="startConversion()">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
-          Convert to {{ targetFormat.toUpperCase() }}
+          <span *ngIf="targetFormat">Convert to {{ targetFormat.toUpperCase() }}</span>
+          <span *ngIf="!targetFormat">Select a Format</span>
         </button>
+        <p class="convert-note" *ngIf="!targetFormat">
+          <i class="fa-solid fa-arrow-up"></i>
+          Please select a target format above
+        </p>
       </div>
     </div>
 

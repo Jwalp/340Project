@@ -114,13 +114,13 @@ export class ExportComponent implements OnInit {
     
     switch (this.selectedCategory) {
       case 'image':
-        return this.exportService.imageFormats;
+        return ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico'];
       case 'audio':
-        return this.exportService.audioFormats;
+        return ['mp3', 'wav', 'ogg'];
       case 'video':
-        return [...this.exportService.videoFormats, 'mp3'];
+        return ['mp4', 'webm', 'mp3']; // mp3 for audio extraction
       case 'document':
-        return this.exportService.documentFormats;
+        return ['txt', 'html', 'md', 'csv', 'docx'];
       default:
         return [];
     }
@@ -131,6 +131,12 @@ export class ExportComponent implements OnInit {
       this.toastService.error('Please select a file and target format');
       return;
     }
+
+    console.log('Starting conversion:', {
+      file: this.selectedFile.filename,
+      category: this.selectedCategory,
+      format: this.targetFormat
+    });
 
     const job: ConversionJob = {
       file: this.selectedFile,
@@ -145,18 +151,21 @@ export class ExportComponent implements OnInit {
       let result: Blob;
       
       if (this.selectedCategory === 'image') {
+        console.log('Converting image...');
         result = await this.exportService.convertImage(
           this.selectedFile,
           this.targetFormat,
           this.imageQuality / 100 // Convert to 0-1 scale
         );
       } else if (this.selectedCategory === 'audio') {
+        console.log('Converting audio...');
         result = await this.exportService.convertAudio(
           this.selectedFile,
           this.targetFormat,
           this.audioBitrate
         );
       } else if (this.selectedCategory === 'video') {
+        console.log('Converting video...');
         if (this.targetFormat === 'mp3') {
           result = await this.exportService.extractAudio(this.selectedFile, 'mp3');
         } else {
@@ -171,10 +180,11 @@ export class ExportComponent implements OnInit {
           );
         }
       } else if (this.selectedCategory === 'document') {
+        console.log('Converting document with content length:', this.documentContent?.length || 0);
         result = await this.exportService.convertDocument(
           this.selectedFile,
           this.targetFormat,
-          this.documentContent // Use edited content
+          this.documentContent || undefined // Use edited content if available
         );
       } else {
         throw new Error('Unsupported file type');
@@ -185,10 +195,12 @@ export class ExportComponent implements OnInit {
       job.result = result;
       
       const newFilename = this.getConvertedFilename(this.selectedFile.filename, this.targetFormat);
+      console.log('Downloading converted file:', newFilename);
       this.exportService.downloadConvertedFile(result, newFilename);
       
       this.toastService.success(`Converted to ${this.targetFormat.toUpperCase()} successfully!`);
     } catch (error: any) {
+      console.error('Conversion error:', error);
       job.status = 'error';
       job.error = error.message || 'Conversion failed';
       this.toastService.error('Conversion failed: ' + job.error);
