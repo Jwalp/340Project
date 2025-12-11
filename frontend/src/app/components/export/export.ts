@@ -29,7 +29,7 @@ export class ExportComponent implements OnInit {
   selectedCategory: 'image' | 'audio' | 'video' | 'document' | null = null;
   targetFormat = '';
   isLoading = false;
-  ffmpegReady = false;
+  conversionReady = true; // Always ready with browser-native conversions
   
   // Conversion options
   imageQuality = 90;
@@ -55,42 +55,7 @@ export class ExportComponent implements OnInit {
 
   ngOnInit() {
     this.loadFiles();
-    this.checkFFmpegStatus();
-  }
-
-  checkFFmpegStatus() {
-    // Check if already ready
-    if (this.exportService.isFFmpegReady()) {
-      this.ffmpegReady = true;
-      console.log('✅ FFmpeg already loaded');
-      return;
-    }
-
-    let attempts = 0;
-    const maxAttempts = 60; // 60 seconds max wait
-    
-    console.log('⏳ Waiting for FFmpeg to initialize...');
-    
-    // Check every second
-    const interval = setInterval(() => {
-      attempts++;
-      
-      if (this.exportService.isFFmpegReady()) {
-        this.ffmpegReady = true;
-        clearInterval(interval);
-        console.log('✅ FFmpeg is ready for conversions');
-        this.toastService.success('Media conversion engine loaded!');
-      } else if (attempts >= maxAttempts) {
-        clearInterval(interval);
-        console.warn('⚠️ FFmpeg took too long to load');
-        this.toastService.warning('Media conversion limited. Document conversions still work!');
-      } else {
-        // Log progress every 10 seconds
-        if (attempts % 10 === 0) {
-          console.log(`⏳ Still loading FFmpeg... (${attempts}s elapsed)`);
-        }
-      }
-    }, 1000);
+    console.log('✅ Export component ready - using browser-native conversions');
   }
 
   loadFiles() {
@@ -161,40 +126,9 @@ export class ExportComponent implements OnInit {
     }
   }
 
-  getDocumentEditingSupported(): boolean {
-    if (!this.selectedFile) return false;
-    
-    const supportedTypes = [
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLSX
-      'application/vnd.ms-excel', // XLS
-      'text/plain',
-      'text/html',
-      'text/markdown',
-      'text/csv',
-      'application/json',
-      'application/xml',
-      'text/xml',
-      'application/vnd.oasis.opendocument.text' // ODT
-    ];
-    
-    return supportedTypes.includes(this.selectedFile.mimeType);
-  }
-
   async startConversion() {
     if (!this.selectedFile || !this.targetFormat) {
       this.toastService.error('Please select a file and target format');
-      return;
-    }
-
-    // Check if FFmpeg is needed for this conversion
-    const needsFFmpeg = this.selectedCategory === 'image' || 
-                        this.selectedCategory === 'audio' || 
-                        this.selectedCategory === 'video';
-
-    if (needsFFmpeg && !this.ffmpegReady) {
-      this.toastService.error('Media conversion engine is still loading. Please wait...');
       return;
     }
 
@@ -214,7 +148,7 @@ export class ExportComponent implements OnInit {
         result = await this.exportService.convertImage(
           this.selectedFile,
           this.targetFormat,
-          this.imageQuality
+          this.imageQuality / 100 // Convert to 0-1 scale
         );
       } else if (this.selectedCategory === 'audio') {
         result = await this.exportService.convertAudio(

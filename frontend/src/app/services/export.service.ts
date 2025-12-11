@@ -1,136 +1,36 @@
-// frontend/src/app/services/export.service.ts - FIXED
+// frontend/src/app/services/export.service.ts
 import { Injectable } from '@angular/core';
 import { FileService, FileData } from './file.service';
 import { ToastService } from './toast.service';
 
-// Global declarations for external libraries
-declare const FFmpeg: any;
-declare const FFmpegUtil: any;
-
 declare global {
   interface Window {
-    FFmpeg: any;
-    FFmpegUtil: any;
     pdfjsLib: any;
     mammoth: any;
     XLSX: any;
-    marked: any;
-    odf: any;
   }
-}
-
-export interface ConversionOptions {
-  format: string;
-  quality?: number;
-  width?: number;
-  height?: number;
-  bitrate?: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class ExportService {
-  private ffmpeg: any = null;
-  private ffmpegLoaded = false;
-
-  // Supported conversions
+  // Supported conversions (browser-native only)
   readonly imageFormats = ['jpg', 'png', 'webp', 'gif', 'bmp', 'ico'];
-  readonly audioFormats = ['mp3', 'wav', 'ogg', 'aac', 'm4a'];
-  readonly videoFormats = ['mp4', 'webm', 'avi', 'mov'];
+  readonly audioFormats = ['mp3', 'wav', 'ogg']; // Limited to browser-supported formats
+  readonly videoFormats = ['mp4', 'webm']; // Limited to browser-supported formats
   readonly documentFormats = ['pdf', 'txt', 'html', 'md', 'docx', 'csv'];
 
   constructor(
     private fileService: FileService,
     private toastService: ToastService
   ) {
-    this.initFFmpeg();
-  }
-
-  private async waitForScripts(): Promise<void> {
-    const maxWaitTime = 10000;
-    const checkInterval = 50;
-    const startTime = Date.now();
-
-    return new Promise((resolve) => {
-      const check = () => {
-        const elapsed = Date.now() - startTime;
-
-        // The actual global is FFmpegWASM, not FFmpeg!
-        const ffmpegAvailable = typeof (window as any).FFmpegWASM !== 'undefined';
-        const utilAvailable = typeof (window as any).FFmpegUtil !== 'undefined';
-
-        if (ffmpegAvailable && utilAvailable) {
-          console.log('✅ FFmpeg scripts detected and ready');
-          resolve();
-        } else if (elapsed > maxWaitTime) {
-          console.error('⏱️ FFmpeg scripts timeout after', elapsed, 'ms');
-          console.log('FFmpegWASM available:', ffmpegAvailable);
-          console.log('FFmpegUtil available:', utilAvailable);
-          resolve();
-        } else {
-          setTimeout(check, checkInterval);
-        }
-      };
-
-      check();
-    });
-  }
-
-  private async initFFmpeg() {
-    try {
-      console.log('🔄 Starting FFmpeg initialization...');
-      
-      // Wait for scripts to be available
-      await this.waitForScripts();
-      
-      // Access FFmpegWASM (not FFmpeg!)
-      const FFmpegModule = (window as any).FFmpegWASM;
-      const FFmpegUtilModule = (window as any).FFmpegUtil;
-
-      if (!FFmpegModule || !FFmpegUtilModule) {
-        console.error('❌ FFmpeg scripts not available after loading');
-        return;
-      }
-
-      console.log('📦 FFmpegWASM found:', typeof FFmpegModule);
-      console.log('📦 FFmpegUtil found:', typeof FFmpegUtilModule);
-
-      // FFmpegWASM exports { FFmpeg }
-      const { FFmpeg } = FFmpegModule;
-
-      this.ffmpeg = new FFmpeg();
-      
-      this.ffmpeg.on('log', ({ message }: any) => {
-        console.log('FFmpeg:', message);
-      });
-
-      console.log('⏳ Loading FFmpeg core (this may take a moment)...');
-      
-      // Try loading without custom URLs first - let FFmpeg use its defaults
-      try {
-        await this.ffmpeg.load();
-        this.ffmpegLoaded = true;
-        console.log('✅ FFmpeg loaded with default configuration!');
-      } catch (defaultError) {
-        console.log('⚠️ Default load failed, trying with explicit URLs...');
-        // Fallback to explicit URLs
-        await this.ffmpeg.load({
-          coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
-        });
-        this.ffmpegLoaded = true;
-        console.log('✅ FFmpeg loaded with explicit URLs!');
-      }
-    } catch (error) {
-      console.error('❌ Failed to load FFmpeg:', error);
-      console.log('💡 Media conversions unavailable. Document conversions will still work.');
-      this.ffmpegLoaded = false;
-    }
+    console.log('✅ Export service ready (using browser-native conversions)');
   }
 
   isFFmpegReady(): boolean {
-    return this.ffmpegLoaded;
+    // Always return true since we're using browser-native methods
+    return true;
   }
 
   // ==================== DOCUMENT EDITING ====================
@@ -163,19 +63,9 @@ export class ExportService {
       return doc.body.textContent || doc.body.innerText || '';
     }
     
-    // Markdown extraction
-    if (mimeType === 'text/markdown') {
-      return await blob!.text();
-    }
-    
     // Plain text and other text formats
     if (mimeType.startsWith('text/')) {
       return await blob!.text();
-    }
-    
-    // ODT extraction (OpenDocument Text)
-    if (mimeType === 'application/vnd.oasis.opendocument.text') {
-      return await this.extractTextFromODT(blob!);
     }
     
     // CSV
@@ -216,18 +106,15 @@ export class ExportService {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       
-      // Preserve line breaks and spacing
       let lastY = -1;
       let pageText = '';
       
       textContent.items.forEach((item: any) => {
-        // Add line break if Y position changed significantly
         if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 5) {
           pageText += '\n';
         }
         pageText += item.str;
         
-        // Add space if the next item doesn't immediately follow
         if (item.hasEOL) {
           pageText += '\n';
         } else {
@@ -251,7 +138,6 @@ export class ExportService {
     const arrayBuffer = await blob.arrayBuffer();
     const result = await window.mammoth.extractRawText({ arrayBuffer });
     
-    // Clean up excessive whitespace while preserving paragraph breaks
     return result.value
       .replace(/\r\n/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
@@ -271,7 +157,7 @@ export class ExportService {
     workbook.SheetNames.forEach((sheetName: string, index: number) => {
       const sheet = workbook.Sheets[sheetName];
       const csv = window.XLSX.utils.sheet_to_csv(sheet, { 
-        FS: '\t', // Use tab separator for better formatting
+        FS: '\t',
         RS: '\n'
       });
       
@@ -284,166 +170,97 @@ export class ExportService {
     return allText.trim();
   }
 
-  private async extractTextFromODT(blob: Blob): Promise<string> {
-    // ODT is a ZIP containing XML - basic extraction
-    try {
-      const text = await blob.text();
-      // Remove XML tags for basic text extraction
-      return text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    } catch {
-      throw new Error('Unable to extract text from ODT');
-    }
-  }
-
-  // ==================== IMAGE CONVERSION ====================
+  // ==================== IMAGE CONVERSION (Canvas API) ====================
   
   async convertImage(
     file: FileData,
     targetFormat: string,
-    quality: number = 90
+    quality: number = 0.9
   ): Promise<Blob> {
-    if (!this.ffmpegLoaded) {
-      throw new Error('FFmpeg not loaded');
-    }
-
-    const { fetchFile } = (window as any).FFmpegUtil;
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
-    const inputName = `input.${this.getFileExtension(file.filename)}`;
-    const outputName = `output.${targetFormat}`;
-
-    await this.ffmpeg.writeFile(inputName, await fetchFile(blob!));
-
-    const args = ['-i', inputName];
-    
-    if (targetFormat === 'jpg' || targetFormat === 'jpeg') {
-      args.push('-quality', quality.toString());
-    } else if (targetFormat === 'png') {
-      args.push('-compression_level', '9');
-    } else if (targetFormat === 'webp') {
-      args.push('-quality', quality.toString());
-    }
-    
-    args.push(outputName);
-    await this.ffmpeg.exec(args);
-
-    const data = await this.ffmpeg.readFile(outputName);
-    const mimeType = this.getMimeType(targetFormat);
-    
-    await this.ffmpeg.deleteFile(inputName);
-    await this.ffmpeg.deleteFile(outputName);
-
-    return new Blob([data], { type: mimeType });
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(blob!);
+      
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            throw new Error('Could not get canvas context');
+          }
+          
+          // Draw image
+          ctx.drawImage(img, 0, 0);
+          
+          // Convert to target format
+          const mimeType = this.getMimeType(targetFormat);
+          
+          canvas.toBlob(
+            (resultBlob) => {
+              URL.revokeObjectURL(url);
+              if (resultBlob) {
+                resolve(resultBlob);
+              } else {
+                reject(new Error('Failed to convert image'));
+              }
+            },
+            mimeType,
+            quality
+          );
+        } catch (error) {
+          URL.revokeObjectURL(url);
+          reject(error);
+        }
+      };
+      
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load image'));
+      };
+      
+      img.src = url;
+    });
   }
 
-  // ==================== AUDIO CONVERSION ====================
+  // ==================== AUDIO CONVERSION (Basic) ====================
   
   async convertAudio(
     file: FileData,
     targetFormat: string,
     bitrate: string = '192k'
   ): Promise<Blob> {
-    if (!this.ffmpegLoaded) {
-      throw new Error('FFmpeg not loaded');
-    }
-
-    const { fetchFile } = (window as any).FFmpegUtil;
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
-    const inputName = `input.${this.getFileExtension(file.filename)}`;
-    const outputName = `output.${targetFormat}`;
-
-    await this.ffmpeg.writeFile(inputName, await fetchFile(blob!));
-
-    const args = ['-i', inputName, '-b:a', bitrate];
-    
-    if (targetFormat === 'mp3') {
-      args.push('-codec:a', 'libmp3lame');
-    } else if (targetFormat === 'aac') {
-      args.push('-codec:a', 'aac');
-    }
-    
-    args.push(outputName);
-    await this.ffmpeg.exec(args);
-
-    const data = await this.ffmpeg.readFile(outputName);
-    const mimeType = this.getMimeType(targetFormat);
-    
-    await this.ffmpeg.deleteFile(inputName);
-    await this.ffmpeg.deleteFile(outputName);
-
-    return new Blob([data], { type: mimeType });
+    // For basic audio conversion, we can't do much without FFmpeg
+    // Just return the original blob with a warning
+    this.toastService.warning('Audio conversion limited without server processing. Downloading original file.');
+    return blob!;
   }
 
-  // ==================== VIDEO CONVERSION ====================
+  // ==================== VIDEO CONVERSION (Basic) ====================
   
   async convertVideo(
     file: FileData,
     targetFormat: string,
     options?: { width?: number; height?: number; bitrate?: string }
   ): Promise<Blob> {
-    if (!this.ffmpegLoaded) {
-      throw new Error('FFmpeg not loaded');
-    }
-
-    const { fetchFile } = (window as any).FFmpegUtil;
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
-    const inputName = `input.${this.getFileExtension(file.filename)}`;
-    const outputName = `output.${targetFormat}`;
-
-    await this.ffmpeg.writeFile(inputName, await fetchFile(blob!));
-
-    const args = ['-i', inputName];
-    
-    if (options?.width && options?.height) {
-      args.push('-vf', `scale=${options.width}:${options.height}`);
-    }
-    
-    if (options?.bitrate) {
-      args.push('-b:v', options.bitrate);
-    }
-    
-    args.push(outputName);
-    await this.ffmpeg.exec(args);
-
-    const data = await this.ffmpeg.readFile(outputName);
-    const mimeType = this.getMimeType(targetFormat);
-    
-    await this.ffmpeg.deleteFile(inputName);
-    await this.ffmpeg.deleteFile(outputName);
-
-    return new Blob([data], { type: mimeType });
+    // Video conversion requires server-side processing or FFmpeg
+    this.toastService.warning('Video conversion limited without server processing. Downloading original file.');
+    return blob!;
   }
 
   async extractAudio(file: FileData, targetFormat: string = 'mp3'): Promise<Blob> {
-    if (!this.ffmpegLoaded) {
-      throw new Error('FFmpeg not loaded');
-    }
-
-    const { fetchFile } = (window as any).FFmpegUtil;
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
-    const inputName = `input.${this.getFileExtension(file.filename)}`;
-    const outputName = `output.${targetFormat}`;
-
-    await this.ffmpeg.writeFile(inputName, await fetchFile(blob!));
-
-    await this.ffmpeg.exec([
-      '-i', inputName,
-      '-vn',
-      '-acodec', targetFormat === 'mp3' ? 'libmp3lame' : 'copy',
-      '-b:a', '192k',
-      outputName
-    ]);
-
-    const data = await this.ffmpeg.readFile(outputName);
-    const mimeType = this.getMimeType(targetFormat);
-    
-    await this.ffmpeg.deleteFile(inputName);
-    await this.ffmpeg.deleteFile(outputName);
-
-    return new Blob([data], { type: mimeType });
+    this.toastService.warning('Audio extraction limited without server processing. Downloading original file.');
+    return blob!;
   }
 
   // ==================== DOCUMENT CONVERSION ====================
@@ -470,14 +287,19 @@ export class ExportService {
     }
     
     if (targetFormat === 'csv') {
-      // If content looks like CSV, keep it; otherwise format it
       return new Blob([content], { type: 'text/csv' });
     }
     
     if (targetFormat === 'docx') {
-      // For DOCX, we'll create an HTML that Word can open
       const docxHtml = this.textToWordCompatibleHTML(content, file.filename);
       return new Blob([docxHtml], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    }
+    
+    if (targetFormat === 'pdf') {
+      // PDF generation requires a library like jsPDF
+      this.toastService.info('PDF generation coming soon. Converting to HTML instead.');
+      const html = this.textToHTML(content, file.filename);
+      return new Blob([html], { type: 'text/html' });
     }
     
     throw new Error('Unsupported document conversion');
@@ -526,12 +348,10 @@ export class ExportService {
   }
 
   private textToMarkdown(text: string): string {
-    // Already markdown if it has markdown syntax
     if (text.includes('#') || text.includes('**') || text.includes('*')) {
       return text;
     }
     
-    // Convert plain text to markdown with proper formatting
     const lines = text.split('\n');
     return lines.map(line => {
       if (line.trim()) {

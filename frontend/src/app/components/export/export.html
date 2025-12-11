@@ -3,14 +3,10 @@
   <main class="export-container">
     <div class="export-header">
       <h1>🔄 Export & Convert Files</h1>
-      <p class="subtitle">Convert your files between different formats</p>
-      <div class="ffmpeg-status" *ngIf="!ffmpegReady && !isLoading">
-        <i class="fa-solid fa-spinner fa-spin"></i>
-        <span>Loading conversion engine...</span>
-      </div>
-      <div class="ffmpeg-status ready" *ngIf="ffmpegReady">
+      <p class="subtitle">Convert your files between different formats using browser-native technology</p>
+      <div class="ffmpeg-status ready">
         <i class="fa-solid fa-check-circle"></i>
-        <span>Conversion engine ready</span>
+        <span>Conversion engine ready (browser-native)</span>
       </div>
     </div>
 
@@ -132,58 +128,21 @@
                  class="slider">
           <span class="slider-value">{{ imageQuality }}%</span>
         </div>
-      </div>
-
-      <!-- Audio Options -->
-      <div class="conversion-settings" *ngIf="selectedCategory === 'audio' && targetFormat">
-        <h3>Audio Bitrate</h3>
-        <select [(ngModel)]="audioBitrate" class="select-control">
-          <option value="128k">128 kbps</option>
-          <option value="192k">192 kbps (Recommended)</option>
-          <option value="256k">256 kbps</option>
-          <option value="320k">320 kbps (High Quality)</option>
-        </select>
-      </div>
-
-      <!-- Video Options -->
-      <div class="conversion-settings" *ngIf="selectedCategory === 'video' && targetFormat && targetFormat !== 'mp3'">
-        <h3>Video Settings</h3>
-        <div class="settings-grid">
-          <div class="setting-item">
-            <label>Width (optional):</label>
-            <input type="number" 
-                   [(ngModel)]="videoWidth" 
-                   placeholder="Auto"
-                   class="input-control">
-          </div>
-          <div class="setting-item">
-            <label>Height (optional):</label>
-            <input type="number" 
-                   [(ngModel)]="videoHeight" 
-                   placeholder="Auto"
-                   class="input-control">
-          </div>
-          <div class="setting-item full-width">
-            <label>Bitrate:</label>
-            <select [(ngModel)]="videoBitrate" class="select-control">
-              <option value="500k">500 kbps (Low)</option>
-              <option value="1M">1 Mbps (Medium)</option>
-              <option value="2M">2 Mbps (High)</option>
-              <option value="5M">5 Mbps (Very High)</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Video to Audio -->
-      <div class="conversion-settings" *ngIf="selectedCategory === 'video' && targetFormat === 'mp3'">
         <div class="info-box">
           <i class="fa-solid fa-info-circle"></i>
-          <p>Extract audio from video file as MP3</p>
+          <p>Using browser Canvas API for fast, client-side conversion</p>
         </div>
       </div>
 
-      <!-- Document Editor (Always visible for documents) -->
+      <!-- Audio/Video Notice -->
+      <div class="conversion-settings" *ngIf="(selectedCategory === 'audio' || selectedCategory === 'video') && targetFormat">
+        <div class="info-box" style="background: rgba(255, 165, 0, 0.1); border-color: rgba(255, 165, 0, 0.3);">
+          <i class="fa-solid fa-info-circle" style="color: #ffa500;"></i>
+          <p style="color: #ffa500;">Audio/Video conversions are limited in browser. The original file will be downloaded.</p>
+        </div>
+      </div>
+
+      <!-- Document Editor -->
       <div class="document-editor-section" *ngIf="selectedCategory === 'document'">
         <div class="editor-header">
           <h3>
@@ -240,14 +199,14 @@
         <!-- Supported Document Types Info -->
         <div class="supported-docs-info" *ngIf="!isLoadingDocument && !showDocumentEditor">
           <i class="fa-solid fa-circle-info"></i>
-          <p>Text extraction supported for: PDF, DOCX, XLSX, TXT, HTML, Markdown, CSV, JSON, XML, ODT</p>
+          <p>Text extraction supported for: PDF, DOCX, XLSX, TXT, HTML, Markdown, CSV, JSON, XML</p>
         </div>
       </div>
 
       <!-- Convert Button -->
       <div class="convert-action">
         <button class="btn-convert" 
-                [disabled]="!targetFormat || !ffmpegReady"
+                [disabled]="!targetFormat"
                 (click)="startConversion()">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
           Convert to {{ targetFormat.toUpperCase() }}
