@@ -45,6 +45,13 @@
       
       <div class="category-selector">
         <button class="category-btn" 
+                [class.active]="selectedCategory === 'document'"
+                (click)="selectedCategory = 'document'; selectedFile = null">
+          <i class="fa-solid fa-file-lines"></i>
+          <span>Documents</span>
+          <span class="count">{{ getFilesByType('document').length }}</span>
+        </button>
+        <button class="category-btn" 
                 [class.active]="selectedCategory === 'image'"
                 (click)="selectedCategory = 'image'; selectedFile = null">
           <i class="fa-solid fa-file-image"></i>
@@ -64,13 +71,6 @@
           <i class="fa-solid fa-file-video"></i>
           <span>Video</span>
           <span class="count">{{ getFilesByType('video').length }}</span>
-        </button>
-        <button class="category-btn" 
-                [class.active]="selectedCategory === 'document'"
-                (click)="selectedCategory = 'document'; selectedFile = null">
-          <i class="fa-solid fa-file-lines"></i>
-          <span>Documents</span>
-          <span class="count">{{ getFilesByType('document').length }}</span>
         </button>
       </div>
 
