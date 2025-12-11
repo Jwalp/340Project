@@ -4,6 +4,13 @@
     <div class="export-header">
       <h1>🔄 Export & Convert Files</h1>
       <p class="subtitle">Convert your files between different formats</p>
+      
+      <!-- FFmpeg Status -->
+      <div class="ffmpeg-status" [class.ready]="ffmpegAvailable">
+        <i class="fa-solid" [ngClass]="ffmpegAvailable ? 'fa-check-circle' : 'fa-triangle-exclamation'"></i>
+        <span *ngIf="ffmpegAvailable">FFmpeg Ready - Full conversion support available</span>
+        <span *ngIf="!ffmpegAvailable">FFmpeg Unavailable - Audio/Video conversions require server setup</span>
+      </div>
     </div>
 
     <!-- Conversion Jobs -->
@@ -115,29 +122,119 @@
 
       <!-- Image Options -->
       <div class="conversion-settings" *ngIf="selectedCategory === 'image' && targetFormat">
-        <h3>Image Quality</h3>
-        <div class="slider-control">
-          <input type="range" 
-                 min="1" 
-                 max="100" 
-                 [(ngModel)]="imageQuality"
-                 class="slider">
-          <span class="slider-value">{{ imageQuality }}%</span>
+        <h3>Image Settings</h3>
+        
+        <div class="setting-item" *ngIf="targetFormat !== 'gif'">
+          <label>Quality</label>
+          <div class="slider-control">
+            <input type="range" 
+                   min="1" 
+                   max="100" 
+                   [(ngModel)]="imageQuality"
+                   class="slider">
+            <span class="slider-value">{{ imageQuality }}%</span>
+          </div>
         </div>
-        <div class="info-box">
+        
+        <div class="info-box" *ngIf="targetFormat === 'gif'">
+          <i class="fa-solid fa-info-circle"></i>
+          <p>GIF conversion uses server-side FFmpeg for optimal quality</p>
+        </div>
+        
+        <div class="info-box" *ngIf="targetFormat !== 'gif'">
           <i class="fa-solid fa-info-circle"></i>
           <p>Using browser Canvas API for fast, client-side conversion</p>
         </div>
       </div>
 
-      <!-- Audio/Video Notice -->
-      <div class="conversion-settings" *ngIf="(selectedCategory === 'audio' || selectedCategory === 'video') && targetFormat">
-        <div class="info-box" style="background: rgba(255, 165, 0, 0.1); border-color: rgba(255, 165, 0, 0.3);">
-          <i class="fa-solid fa-circle-info" style="color: #ffa500;"></i>
-          <p style="color: #ffa500;">
-            <strong>Note:</strong> Audio/Video conversions require server-side processing which is not available in this browser-only version. 
-            Your original file will be downloaded instead.
-          </p>
+      <!-- Audio Options -->
+      <div class="conversion-settings" *ngIf="selectedCategory === 'audio' && targetFormat">
+        <h3>Audio Settings</h3>
+        
+        <div class="settings-grid">
+          <div class="setting-item">
+            <label>Bitrate</label>
+            <select [(ngModel)]="audioBitrate" class="select-control">
+              <option value="128k">128 kbps</option>
+              <option value="192k">192 kbps</option>
+              <option value="256k">256 kbps</option>
+              <option value="320k">320 kbps</option>
+            </select>
+          </div>
+          
+          <div class="setting-item">
+            <label>Sample Rate</label>
+            <select [(ngModel)]="audioSampleRate" class="select-control">
+              <option [value]="22050">22050 Hz</option>
+              <option [value]="44100">44100 Hz</option>
+              <option [value]="48000">48000 Hz</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="info-box">
+          <i class="fa-solid fa-circle-info"></i>
+          <p><strong>Note:</strong> Audio conversion uses server-side FFmpeg processing</p>
+        </div>
+      </div>
+
+      <!-- Video Options -->
+      <div class="conversion-settings" *ngIf="selectedCategory === 'video' && targetFormat">
+        <h3>Video Settings</h3>
+        
+        <div class="settings-grid" *ngIf="targetFormat !== 'mp3'">
+          <div class="setting-item">
+            <label>Video Bitrate</label>
+            <select [(ngModel)]="videoBitrate" class="select-control">
+              <option value="500k">500 kbps</option>
+              <option value="1M">1 Mbps</option>
+              <option value="2M">2 Mbps</option>
+              <option value="5M">5 Mbps</option>
+            </select>
+          </div>
+          
+          <div class="setting-item">
+            <label>Audio Bitrate</label>
+            <select [(ngModel)]="audioBitrateVideo" class="select-control">
+              <option value="128k">128 kbps</option>
+              <option value="192k">192 kbps</option>
+              <option value="256k">256 kbps</option>
+            </select>
+          </div>
+          
+          <div class="setting-item">
+            <label>Width (0 = auto)</label>
+            <input type="number" 
+                   [(ngModel)]="videoWidth" 
+                   placeholder="0"
+                   class="input-control">
+          </div>
+          
+          <div class="setting-item">
+            <label>Height (0 = auto)</label>
+            <input type="number" 
+                   [(ngModel)]="videoHeight" 
+                   placeholder="0"
+                   class="input-control">
+          </div>
+          
+          <div class="setting-item">
+            <label>FPS (0 = keep original)</label>
+            <input type="number" 
+                   [(ngModel)]="videoFps" 
+                   placeholder="30"
+                   class="input-control">
+          </div>
+        </div>
+        
+        <div class="info-box" *ngIf="targetFormat === 'mp3'">
+          <i class="fa-solid fa-music"></i>
+          <p>Extracting audio from video as MP3</p>
+        </div>
+        
+        <div class="info-box">
+          <i class="fa-solid fa-circle-info"></i>
+          <p><strong>Note:</strong> Video conversion uses server-side FFmpeg processing</p>
         </div>
       </div>
 
@@ -205,15 +302,21 @@
       <!-- Convert Button -->
       <div class="convert-action">
         <button class="btn-convert" 
-                [disabled]="!targetFormat"
+                [disabled]="!targetFormat || (needsServerProcessing() && !ffmpegAvailable)"
                 (click)="startConversion()">
           <i class="fa-solid fa-wand-magic-sparkles"></i>
           <span *ngIf="targetFormat">Convert to {{ targetFormat.toUpperCase() }}</span>
           <span *ngIf="!targetFormat">Select a Format</span>
         </button>
+        
         <p class="convert-note" *ngIf="!targetFormat">
           <i class="fa-solid fa-arrow-up"></i>
           Please select a target format above
+        </p>
+        
+        <p class="convert-note" *ngIf="needsServerProcessing() && !ffmpegAvailable">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          This conversion requires FFmpeg to be installed on the server
         </p>
       </div>
     </div>

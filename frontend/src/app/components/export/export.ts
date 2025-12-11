@@ -29,14 +29,17 @@ export class ExportComponent implements OnInit {
   selectedCategory: 'image' | 'audio' | 'video' | 'document' | null = null;
   targetFormat = '';
   isLoading = false;
-  conversionReady = true;
+  ffmpegAvailable = false;
   
   // Conversion options
   imageQuality = 90;
   audioBitrate = '192k';
+  audioSampleRate = 44100;
   videoWidth = 0;
   videoHeight = 0;
   videoBitrate = '1M';
+  audioBitrateVideo = '192k';
+  videoFps = 30;
   
   // Document editing
   showDocumentEditor = false;
@@ -53,9 +56,15 @@ export class ExportComponent implements OnInit {
     private toastService: ToastService
   ) {}
 
-  ngOnInit() {
+  async ngOnInit() {
     this.loadFiles();
-    console.log('✅ Export component ready');
+    this.ffmpegAvailable = await this.exportService.checkFFmpegStatus();
+    if (this.ffmpegAvailable) {
+      console.log('✅ FFmpeg is available on server');
+    } else {
+      console.warn('⚠️ FFmpeg not available - audio/video conversions limited');
+      this.toastService.warning('Audio and video conversions require FFmpeg to be installed on the server');
+    }
   }
 
   loadFiles() {
@@ -80,7 +89,6 @@ export class ExportComponent implements OnInit {
     this.documentContent = '';
     this.originalDocumentContent = '';
     
-    // Auto-load document content for editing
     if (file.fileType === 'document') {
       this.loadDocumentForEditing();
     }
@@ -114,11 +122,11 @@ export class ExportComponent implements OnInit {
     
     switch (this.selectedCategory) {
       case 'image':
-        return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'ico', 'svg'];
+        return ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'ico'];
       case 'audio':
-        return ['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a', 'webm'];
+        return ['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a'];
       case 'video':
-        return ['mp4', 'webm', 'mov', 'avi', 'mkv', 'mpeg', 'flv'];
+        return ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'mp3']; // mp3 for audio extraction
       case 'document':
         return ['txt', 'html', 'md', 'csv', 'json', 'xml', 'docx', 'rtf', 'odt'];
       default:
@@ -130,6 +138,22 @@ export class ExportComponent implements OnInit {
     if (!this.selectedFile || !this.targetFormat) {
       this.toastService.error('Please select a file and target format');
       return;
+    }
+
+    // Check if FFmpeg is needed but not available
+    if (!this.ffmpegAvailable) {
+      if (this.selectedCategory === 'audio') {
+        this.toastService.error('Audio conversion requires FFmpeg on the server');
+        return;
+      }
+      if (this.selectedCategory === 'video') {
+        this.toastService.error('Video conversion requires FFmpeg on the server');
+        return;
+      }
+      if (this.selectedCategory === 'image' && this.targetFormat === 'gif') {
+        this.toastService.error('GIF conversion requires FFmpeg on the server');
+        return;
+      }
     }
 
     console.log('Starting conversion:', {
@@ -175,7 +199,8 @@ export class ExportComponent implements OnInit {
             {
               width: this.videoWidth || undefined,
               height: this.videoHeight || undefined,
-              bitrate: this.videoBitrate
+              bitrate: this.videoBitrate,
+              fps: this.videoFps || undefined
             }
           );
         }
@@ -254,5 +279,16 @@ export class ExportComponent implements OnInit {
   getLineCount(): number {
     if (!this.documentContent) return 0;
     return this.documentContent.split('\n').length;
+  }
+  
+  // Check if audio/video format needs server-side processing
+  needsServerProcessing(): boolean {
+    if (!this.selectedCategory || !this.targetFormat) return false;
+    
+    if (this.selectedCategory === 'audio') return true;
+    if (this.selectedCategory === 'video') return true;
+    if (this.selectedCategory === 'image' && this.targetFormat === 'gif') return true;
+    
+    return false;
   }
 }
