@@ -59,19 +59,31 @@ export class ExportComponent implements OnInit {
   }
 
   checkFFmpegStatus() {
+    // Check immediately first
+    if (this.exportService.isFFmpegReady()) {
+      this.ffmpegReady = true;
+      console.log('✅ FFmpeg already loaded');
+      return;
+    }
+
+    let attempts = 0;
+    const maxAttempts = 30; // 30 seconds max wait
+    
+    // Check every second in background
     const interval = setInterval(() => {
+      attempts++;
+      
       if (this.exportService.isFFmpegReady()) {
         this.ffmpegReady = true;
         clearInterval(interval);
+        console.log('✅ FFmpeg is ready for conversions');
+        this.toastService.success('Media conversion engine loaded!');
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        console.warn('⚠️ FFmpeg took too long to load');
+        this.toastService.warning('Media conversion limited. Document conversions still work!');
       }
     }, 1000);
-    
-    setTimeout(() => {
-      clearInterval(interval);
-      if (!this.ffmpegReady) {
-        this.toastService.warning('Media conversion may be limited');
-      }
-    }, 30000);
   }
 
   loadFiles() {

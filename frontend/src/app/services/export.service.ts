@@ -45,9 +45,34 @@ export class ExportService {
   }
 
   private async initFFmpeg() {
+    // Check if FFmpeg script is loaded, if not wait for it
+    const waitForFFmpeg = () => {
+      return new Promise<void>((resolve) => {
+        if (window.FFmpeg) {
+          resolve();
+        } else {
+          const checkInterval = setInterval(() => {
+            if (window.FFmpeg) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 100);
+          
+          // Timeout after 30 seconds
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            console.error('FFmpeg script failed to load');
+            resolve();
+          }, 30000);
+        }
+      });
+    };
+
     try {
+      await waitForFFmpeg();
+      
       if (!window.FFmpeg) {
-        console.error('FFmpeg not loaded');
+        console.error('FFmpeg not available');
         return;
       }
 
@@ -59,6 +84,12 @@ export class ExportService {
       });
 
       const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+      
+      if (!window.FFmpegUtil) {
+        console.error('FFmpegUtil not available');
+        return;
+      }
+      
       const { toBlobURL } = window.FFmpegUtil;
       
       await this.ffmpeg.load({
@@ -67,9 +98,10 @@ export class ExportService {
       });
 
       this.ffmpegLoaded = true;
-      console.log('FFmpeg loaded successfully');
+      console.log('✅ FFmpeg loaded successfully');
     } catch (error) {
-      console.error('Failed to load FFmpeg:', error);
+      console.error('❌ Failed to load FFmpeg:', error);
+      this.ffmpegLoaded = false;
     }
   }
 
@@ -159,8 +191,29 @@ export class ExportService {
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item: any) => item.str).join(' ');
-      fullText += pageText + '\n\n';
+      
+      // Preserve line breaks and spacing
+      let lastY = -1;
+      let pageText = '';
+      
+      textContent.items.forEach((item: any) => {
+        // Add line break if Y position changed significantly
+        if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 5) {
+          pageText += '\n';
+        }
+        pageText += item.str;
+        
+        // Add space if the next item doesn't immediately follow
+        if (item.hasEOL) {
+          pageText += '\n';
+        } else {
+          pageText += ' ';
+        }
+        
+        lastY = item.transform[5];
+      });
+      
+      fullText += `=== Page ${i} ===\n\n${pageText.trim()}\n\n`;
     }
     
     return fullText.trim();
@@ -173,7 +226,12 @@ export class ExportService {
 
     const arrayBuffer = await blob.arrayBuffer();
     const result = await window.mammoth.extractRawText({ arrayBuffer });
-    return result.value;
+    
+    // Clean up excessive whitespace while preserving paragraph breaks
+    return result.value
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
   private async extractTextFromExcel(blob: Blob): Promise<string> {
@@ -186,10 +244,17 @@ export class ExportService {
     
     let allText = '';
     
-    workbook.SheetNames.forEach((sheetName: string) => {
+    workbook.SheetNames.forEach((sheetName: string, index: number) => {
       const sheet = workbook.Sheets[sheetName];
-      const csv = window.XLSX.utils.sheet_to_csv(sheet);
-      allText += `=== Sheet: ${sheetName} ===\n${csv}\n\n`;
+      const csv = window.XLSX.utils.sheet_to_csv(sheet, { 
+        FS: '\t', // Use tab separator for better formatting
+        RS: '\n'
+      });
+      
+      allText += `${'='.repeat(60)}\n`;
+      allText += `Sheet ${index + 1}: ${sheetName}\n`;
+      allText += `${'='.repeat(60)}\n\n`;
+      allText += csv + '\n\n';
     });
     
     return allText.trim();
