@@ -10,8 +10,7 @@ import { ToastService, Toast } from '../../services/toast.service';
   template: `
     <div class="toast-container">
       <div *ngFor="let toast of toasts" 
-           class="toast toast-{{ toast.type }}"
-           [@slideIn]>
+           class="toast toast-{{ toast.type }}">
         <div class="toast-icon">
           <i *ngIf="toast.type === 'success'" class="fa-solid fa-circle-check"></i>
           <i *ngIf="toast.type === 'error'" class="fa-solid fa-circle-exclamation"></i>
@@ -54,15 +53,44 @@ import { ToastService, Toast } from '../../services/toast.service';
 
     @keyframes slideIn {
       from {
-        transform: translateX(400px);
+        transform: translateY(100%);
         opacity: 0;
       }
       to {
-        transform: translateX(0);
+        transform: translateY(0);
         opacity: 1;
       }
     }
 
+    @keyframes slideOut {
+      from {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      z-index: 1000;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .toast.hiding {
+      animation: slideOut 0.3s ease-out;
+    }
     .toast-success {
       background: rgba(0, 255, 136, 0.15);
       border-color: #00ff88;
