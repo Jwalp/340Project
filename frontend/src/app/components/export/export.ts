@@ -29,7 +29,7 @@ export class ExportComponent implements OnInit {
   selectedCategory: 'image' | 'audio' | 'video' | 'document' | null = null;
   targetFormat = '';
   isLoading = false;
-  conversionReady = true; // Always ready with browser-native conversions
+  conversionReady = true;
   
   // Conversion options
   imageQuality = 90;
@@ -55,7 +55,7 @@ export class ExportComponent implements OnInit {
 
   ngOnInit() {
     this.loadFiles();
-    console.log('✅ Export component ready - using browser-native conversions');
+    console.log('✅ Export component ready');
   }
 
   loadFiles() {
@@ -114,13 +114,13 @@ export class ExportComponent implements OnInit {
     
     switch (this.selectedCategory) {
       case 'image':
-        return ['png', 'jpg', 'webp', 'gif', 'bmp', 'ico'];
+        return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'ico', 'svg'];
       case 'audio':
-        return ['mp3', 'wav', 'ogg'];
+        return ['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a', 'webm'];
       case 'video':
-        return ['mp4', 'webm', 'mp3']; // mp3 for audio extraction
+        return ['mp4', 'webm', 'mov', 'avi', 'mkv', 'mpeg', 'flv'];
       case 'document':
-        return ['txt', 'html', 'md', 'csv', 'docx'];
+        return ['txt', 'html', 'md', 'csv', 'json', 'xml', 'docx', 'rtf', 'odt'];
       default:
         return [];
     }
@@ -155,7 +155,7 @@ export class ExportComponent implements OnInit {
         result = await this.exportService.convertImage(
           this.selectedFile,
           this.targetFormat,
-          this.imageQuality / 100 // Convert to 0-1 scale
+          this.imageQuality / 100
         );
       } else if (this.selectedCategory === 'audio') {
         console.log('Converting audio...');
@@ -184,7 +184,7 @@ export class ExportComponent implements OnInit {
         result = await this.exportService.convertDocument(
           this.selectedFile,
           this.targetFormat,
-          this.documentContent || undefined // Use edited content if available
+          this.documentContent || undefined
         );
       } else {
         throw new Error('Unsupported file type');

@@ -15,21 +15,20 @@ declare global {
   providedIn: 'root'
 })
 export class ExportService {
-  // Supported conversions (browser-native only)
-  readonly imageFormats = ['png', 'jpg', 'webp', 'bmp', 'ico'];
-  readonly audioFormats = ['mp3', 'wav', 'ogg'];
-  readonly videoFormats = ['mp4', 'webm'];
-  readonly documentFormats = ['txt', 'html', 'md', 'csv', 'docx'];
+  // Supported conversions (browser-native)
+  readonly imageFormats = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'ico', 'svg'];
+  readonly audioFormats = ['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a', 'webm'];
+  readonly videoFormats = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'mpeg', 'flv'];
+  readonly documentFormats = ['txt', 'html', 'md', 'csv', 'docx', 'pdf', 'rtf', 'odt', 'ods', 'xml', 'json'];
 
   constructor(
     private fileService: FileService,
     private toastService: ToastService
   ) {
-    console.log('✅ Export service ready (using browser-native conversions)');
+    console.log('✅ Export service ready');
   }
 
   isFFmpegReady(): boolean {
-    // Always return true since we're using browser-native methods
     return true;
   }
 
@@ -179,6 +178,23 @@ export class ExportService {
   ): Promise<Blob> {
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
+    // Special handling for SVG - can't convert via canvas easily
+    if (targetFormat === 'svg') {
+      const ext = this.getFileExtension(file.filename);
+      if (ext === 'svg') {
+        // SVG to SVG - just return original
+        return blob!;
+      }
+      // Can't convert raster to SVG
+      throw new Error('Cannot convert raster images to SVG format');
+    }
+    
+    // If source is SVG, handle differently
+    const sourceExt = this.getFileExtension(file.filename);
+    if (sourceExt === 'svg') {
+      return await this.convertSVGToRaster(blob!, targetFormat, quality);
+    }
+    
     return new Promise((resolve, reject) => {
       const img = new Image();
       const url = URL.createObjectURL(blob!);
@@ -205,37 +221,18 @@ export class ExportService {
           // Convert to target format
           const mimeType = this.getMimeType(targetFormat);
           
-          // Special handling for GIF - canvas doesn't directly export to GIF
-          // So we'll export as PNG which browsers handle well
-          if (targetFormat === 'gif') {
-            canvas.toBlob(
-              (resultBlob) => {
-                URL.revokeObjectURL(url);
-                if (resultBlob) {
-                  // Return as PNG but warn user
-                  this.toastService.info('GIF export limited - converting to PNG instead');
-                  resolve(resultBlob);
-                } else {
-                  reject(new Error('Failed to convert image'));
-                }
-              },
-              'image/png',
-              1.0
-            );
-          } else {
-            canvas.toBlob(
-              (resultBlob) => {
-                URL.revokeObjectURL(url);
-                if (resultBlob) {
-                  resolve(resultBlob);
-                } else {
-                  reject(new Error('Failed to convert image'));
-                }
-              },
-              mimeType,
-              quality
-            );
-          }
+          canvas.toBlob(
+            (resultBlob) => {
+              URL.revokeObjectURL(url);
+              if (resultBlob) {
+                resolve(resultBlob);
+              } else {
+                reject(new Error('Failed to convert image'));
+              }
+            },
+            mimeType,
+            quality
+          );
         } catch (error) {
           URL.revokeObjectURL(url);
           reject(error);
@@ -251,7 +248,58 @@ export class ExportService {
     });
   }
 
-  // ==================== AUDIO CONVERSION (Limited) ====================
+  private async convertSVGToRaster(blob: Blob, targetFormat: string, quality: number): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const svgText = e.target?.result as string;
+        const img = new Image();
+        
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          
+          // Use SVG dimensions or default to reasonable size
+          canvas.width = img.width || 800;
+          canvas.height = img.height || 600;
+          
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+          
+          // White background for non-transparent formats
+          if (targetFormat === 'jpg' || targetFormat === 'jpeg' || targetFormat === 'bmp') {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+          
+          ctx.drawImage(img, 0, 0);
+          
+          canvas.toBlob(
+            (resultBlob) => {
+              if (resultBlob) {
+                resolve(resultBlob);
+              } else {
+                reject(new Error('Failed to convert SVG'));
+              }
+            },
+            this.getMimeType(targetFormat),
+            quality
+          );
+        };
+        
+        img.onerror = () => reject(new Error('Failed to load SVG'));
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
+      };
+      
+      reader.onerror = () => reject(new Error('Failed to read SVG file'));
+      reader.readAsText(blob);
+    });
+  }
+
+  // ==================== AUDIO CONVERSION ====================
   
   async convertAudio(
     file: FileData,
@@ -260,12 +308,163 @@ export class ExportService {
   ): Promise<Blob> {
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
-    // Browser can't convert audio formats without server-side processing
-    this.toastService.warning(`Audio conversion requires server processing. Downloading original ${file.filename}`);
-    return blob!;
+    // Check if source and target are the same
+    const sourceExt = this.getFileExtension(file.filename);
+    if (sourceExt === targetFormat) {
+      return blob!;
+    }
+    
+    // Use Web Audio API for basic conversions
+    try {
+      const arrayBuffer = await blob!.arrayBuffer();
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      
+      // For WAV conversion, we can create it directly
+      if (targetFormat === 'wav') {
+        return this.audioBufferToWav(audioBuffer);
+      }
+      
+      // For other formats, we need to re-encode
+      // This is a simplified approach - real conversion would need more complex encoding
+      this.toastService.info(`Converting ${sourceExt.toUpperCase()} to ${targetFormat.toUpperCase()}...`);
+      
+      // Create a new blob with the audio data
+      // Note: This is a basic conversion, quality may vary
+      return await this.encodeAudioBuffer(audioBuffer, targetFormat);
+      
+    } catch (error) {
+      console.error('Audio conversion error:', error);
+      throw new Error(`Failed to convert audio: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
-  // ==================== VIDEO CONVERSION (Limited) ====================
+  private audioBufferToWav(audioBuffer: AudioBuffer): Blob {
+    const numberOfChannels = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const format = 1; // PCM
+    const bitDepth = 16;
+    
+    const bytesPerSample = bitDepth / 8;
+    const blockAlign = numberOfChannels * bytesPerSample;
+    
+    const data = new Float32Array(audioBuffer.length * numberOfChannels);
+    for (let channel = 0; channel < numberOfChannels; channel++) {
+      const channelData = audioBuffer.getChannelData(channel);
+      for (let i = 0; i < audioBuffer.length; i++) {
+        data[i * numberOfChannels + channel] = channelData[i];
+      }
+    }
+    
+    const dataLength = data.length * bytesPerSample;
+    const buffer = new ArrayBuffer(44 + dataLength);
+    const view = new DataView(buffer);
+    
+    // WAV header
+    this.writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataLength, true);
+    this.writeString(view, 8, 'WAVE');
+    this.writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, format, true);
+    view.setUint16(22, numberOfChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitDepth, true);
+    this.writeString(view, 36, 'data');
+    view.setUint32(40, dataLength, true);
+    
+    // Write audio data
+    const volume = 0.8;
+    let index = 44;
+    for (let i = 0; i < data.length; i++) {
+      const sample = Math.max(-1, Math.min(1, data[i] * volume));
+      view.setInt16(index, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      index += 2;
+    }
+    
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  private writeString(view: DataView, offset: number, string: string): void {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  }
+
+  private async encodeAudioBuffer(audioBuffer: AudioBuffer, targetFormat: string): Promise<Blob> {
+    // First convert to WAV as intermediate format
+    const wavBlob = this.audioBufferToWav(audioBuffer);
+    
+    // If target is WAV, we're done
+    if (targetFormat === 'wav') {
+      return wavBlob;
+    }
+    
+    // For other formats, we'll use MediaRecorder if available
+    if (typeof MediaRecorder !== 'undefined') {
+      try {
+        return await this.recordAudioBuffer(audioBuffer, targetFormat);
+      } catch (error) {
+        console.warn('MediaRecorder failed, returning WAV:', error);
+        this.toastService.warning(`Direct conversion to ${targetFormat.toUpperCase()} not available, converted to WAV`);
+        return wavBlob;
+      }
+    }
+    
+    // Fallback to WAV
+    this.toastService.warning(`Direct conversion to ${targetFormat.toUpperCase()} not available, converted to WAV`);
+    return wavBlob;
+  }
+
+  private async recordAudioBuffer(audioBuffer: AudioBuffer, targetFormat: string): Promise<Blob> {
+    const offlineContext = new OfflineAudioContext(
+      audioBuffer.numberOfChannels,
+      audioBuffer.length,
+      audioBuffer.sampleRate
+    );
+    
+    const source = offlineContext.createBufferSource();
+    source.buffer = audioBuffer;
+    
+    const dest = offlineContext.destination;
+    source.connect(dest);
+    source.start();
+    
+    const renderedBuffer = await offlineContext.startRendering();
+    
+    // Create MediaStream from buffer
+    const mediaStreamDest = new AudioContext().createMediaStreamDestination();
+    const newSource = new AudioContext().createBufferSource();
+    newSource.buffer = renderedBuffer;
+    newSource.connect(mediaStreamDest);
+    
+    // Determine MIME type
+    let mimeType = 'audio/webm';
+    if (targetFormat === 'ogg') mimeType = 'audio/ogg';
+    else if (targetFormat === 'mp3') mimeType = 'audio/mpeg';
+    
+    // Record the stream
+    const recorder = new MediaRecorder(mediaStreamDest.stream, { mimeType });
+    const chunks: Blob[] = [];
+    
+    return new Promise((resolve, reject) => {
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
+      recorder.onerror = reject;
+      
+      recorder.start();
+      newSource.start();
+      
+      setTimeout(() => {
+        recorder.stop();
+        newSource.stop();
+      }, (renderedBuffer.duration * 1000) + 100);
+    });
+  }
+
+  // ==================== VIDEO CONVERSION ====================
   
   async convertVideo(
     file: FileData,
@@ -274,16 +473,132 @@ export class ExportService {
   ): Promise<Blob> {
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
-    // Browser can't convert video formats without server-side processing
-    this.toastService.warning(`Video conversion requires server processing. Downloading original ${file.filename}`);
-    return blob!;
+    // Check if source and target are the same
+    const sourceExt = this.getFileExtension(file.filename);
+    if (sourceExt === targetFormat) {
+      return blob!;
+    }
+    
+    // Use MediaRecorder API for format conversion
+    try {
+      const video = document.createElement('video');
+      video.src = URL.createObjectURL(blob!);
+      
+      await new Promise((resolve, reject) => {
+        video.onloadedmetadata = resolve;
+        video.onerror = reject;
+      });
+      
+      // Create canvas for video capture
+      const canvas = document.createElement('canvas');
+      canvas.width = options?.width || video.videoWidth;
+      canvas.height = options?.height || video.videoHeight;
+      
+      const stream = canvas.captureStream(30); // 30 FPS
+      
+      // Add audio if present
+      const audioContext = new AudioContext();
+      const mediaStream = new MediaStream();
+      
+      // Try to get audio from video
+      try {
+        const audioSource = audioContext.createMediaElementSource(video);
+        const dest = audioContext.createMediaStreamDestination();
+        audioSource.connect(dest);
+        dest.stream.getAudioTracks().forEach(track => mediaStream.addTrack(track));
+      } catch (e) {
+        console.warn('No audio track or audio access failed');
+      }
+      
+      stream.getVideoTracks().forEach(track => mediaStream.addTrack(track));
+      
+      // Determine MIME type
+      let mimeType = `video/${targetFormat}`;
+      if (targetFormat === 'webm') mimeType = 'video/webm;codecs=vp8';
+      else if (targetFormat === 'mp4') mimeType = 'video/mp4';
+      
+      const recorder = new MediaRecorder(mediaStream, { 
+        mimeType,
+        videoBitsPerSecond: options?.bitrate ? parseInt(options.bitrate) * 1000 : 2500000
+      });
+      
+      const chunks: Blob[] = [];
+      
+      return new Promise((resolve, reject) => {
+        recorder.ondataavailable = (e) => chunks.push(e.data);
+        recorder.onstop = () => {
+          URL.revokeObjectURL(video.src);
+          resolve(new Blob(chunks, { type: mimeType }));
+        };
+        recorder.onerror = reject;
+        
+        // Draw video frames to canvas
+        const ctx = canvas.getContext('2d')!;
+        const drawFrame = () => {
+          if (video.ended || video.paused) {
+            recorder.stop();
+            return;
+          }
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          requestAnimationFrame(drawFrame);
+        };
+        
+        recorder.start();
+        video.play();
+        drawFrame();
+      });
+      
+    } catch (error) {
+      console.error('Video conversion error:', error);
+      throw new Error(`Failed to convert video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   async extractAudio(file: FileData, targetFormat: string = 'mp3'): Promise<Blob> {
     const blob = await this.fileService.downloadFile(file.id).toPromise();
     
-    this.toastService.warning(`Audio extraction requires server processing. Downloading original ${file.filename}`);
-    return blob!;
+    try {
+      const video = document.createElement('video');
+      video.src = URL.createObjectURL(blob!);
+      
+      await new Promise((resolve, reject) => {
+        video.onloadedmetadata = resolve;
+        video.onerror = reject;
+      });
+      
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaElementSource(video);
+      const dest = audioContext.createMediaStreamDestination();
+      source.connect(dest);
+      
+      let mimeType = 'audio/webm';
+      if (targetFormat === 'mp3') mimeType = 'audio/mpeg';
+      else if (targetFormat === 'ogg') mimeType = 'audio/ogg';
+      else if (targetFormat === 'wav') mimeType = 'audio/wav';
+      
+      const recorder = new MediaRecorder(dest.stream, { mimeType });
+      const chunks: Blob[] = [];
+      
+      return new Promise((resolve, reject) => {
+        recorder.ondataavailable = (e) => chunks.push(e.data);
+        recorder.onstop = () => {
+          URL.revokeObjectURL(video.src);
+          resolve(new Blob(chunks, { type: mimeType }));
+        };
+        recorder.onerror = reject;
+        
+        recorder.start();
+        video.play();
+        
+        video.onended = () => {
+          recorder.stop();
+        };
+      });
+      
+    } catch (error) {
+      console.error('Audio extraction error:', error);
+      throw new Error(`Failed to extract audio: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   // ==================== DOCUMENT CONVERSION ====================
@@ -316,9 +631,42 @@ export class ExportService {
       return new Blob([content], { type: 'text/csv' });
     }
     
+    if (targetFormat === 'json') {
+      try {
+        // Try to format as JSON if it's valid JSON
+        const parsed = JSON.parse(content);
+        const formatted = JSON.stringify(parsed, null, 2);
+        return new Blob([formatted], { type: 'application/json' });
+      } catch {
+        // If not valid JSON, wrap it
+        const jsonObj = { content: content };
+        return new Blob([JSON.stringify(jsonObj, null, 2)], { type: 'application/json' });
+      }
+    }
+    
+    if (targetFormat === 'xml') {
+      const xml = this.textToXML(content);
+      return new Blob([xml], { type: 'application/xml' });
+    }
+    
     if (targetFormat === 'docx') {
       const docxHtml = this.textToWordCompatibleHTML(content, file.filename);
       return new Blob([docxHtml], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    }
+    
+    if (targetFormat === 'rtf') {
+      const rtf = this.textToRTF(content);
+      return new Blob([rtf], { type: 'application/rtf' });
+    }
+    
+    if (targetFormat === 'odt') {
+      const odt = this.textToODT(content, file.filename);
+      return new Blob([odt], { type: 'application/vnd.oasis.opendocument.text' });
+    }
+    
+    if (targetFormat === 'pdf') {
+      // PDF generation would require a library like jsPDF
+      throw new Error('PDF generation requires additional library. Please use HTML or DOCX format instead.');
     }
     
     throw new Error(`Unsupported document conversion format: ${targetFormat}`);
@@ -380,6 +728,37 @@ export class ExportService {
     }).join('');
   }
 
+  private textToXML(text: string): string {
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<document>
+  <content>${this.escapeXml(text)}</content>
+</document>`;
+  }
+
+  private textToRTF(text: string): string {
+    const rtfHeader = '{\\rtf1\\ansi\\deff0\n{\\fonttbl{\\f0 Times New Roman;}}\n';
+    const rtfBody = text
+      .replace(/\\/g, '\\\\')
+      .replace(/{/g, '\\{')
+      .replace(/}/g, '\\}')
+      .replace(/\n/g, '\\par\n');
+    const rtfFooter = '\n}';
+    
+    return rtfHeader + rtfBody + rtfFooter;
+  }
+
+  private textToODT(text: string, title: string): string {
+    // Basic ODT structure (simplified)
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0">
+  <office:body>
+    <office:text>
+      <text:p>${this.escapeXml(text)}</text:p>
+    </office:text>
+  </office:body>
+</office:document>`;
+  }
+
   private textToWordCompatibleHTML(text: string, title: string): string {
     return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
 <head>
@@ -408,6 +787,15 @@ ${text.split('\n').map(line => `<p>${this.escapeHtml(line) || '&nbsp;'}</p>`).jo
     return div.innerHTML;
   }
 
+  private escapeXml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+
   private getFileExtension(filename: string): string {
     return filename.split('.').pop()?.toLowerCase() || '';
   }
@@ -422,20 +810,34 @@ ${text.split('\n').map(line => `<p>${this.escapeHtml(line) || '&nbsp;'}</p>`).jo
       gif: 'image/gif',
       bmp: 'image/bmp',
       ico: 'image/x-icon',
+      svg: 'image/svg+xml',
       // Audio
       mp3: 'audio/mpeg',
       wav: 'audio/wav',
       ogg: 'audio/ogg',
+      aac: 'audio/aac',
+      flac: 'audio/flac',
+      m4a: 'audio/mp4',
+      webm: 'audio/webm',
       // Video
       mp4: 'video/mp4',
-      webm: 'video/webm',
+      mov: 'video/quicktime',
+      avi: 'video/x-msvideo',
+      mkv: 'video/x-matroska',
+      mpeg: 'video/mpeg',
+      flv: 'video/x-flv',
       // Documents
       txt: 'text/plain',
       html: 'text/html',
       md: 'text/markdown',
       csv: 'text/csv',
+      json: 'application/json',
+      xml: 'application/xml',
       docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      pdf: 'application/pdf'
+      pdf: 'application/pdf',
+      rtf: 'application/rtf',
+      odt: 'application/vnd.oasis.opendocument.text',
+      ods: 'application/vnd.oasis.opendocument.spreadsheet'
     };
     return mimeTypes[format] || 'application/octet-stream';
   }

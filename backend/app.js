@@ -1,4 +1,4 @@
-// backend/app.js - Updated to start purge service
+// backend/app.js
 require('dotenv').config();
 const createError = require('http-errors');
 const express = require('express');
@@ -8,13 +8,14 @@ const logger = require('morgan');
 const cors = require('cors');
 const passport = require('./config/passport');
 const connectDB = require('./config/database');
-const filePurgeService = require('./services/filePurgeService'); // NEW
+const filePurgeService = require('./services/filePurgeService');
 
 // Import routes
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 const authRouter = require('./routes/auth');
 const filesRouter = require('./routes/files');
+const conversionRouter = require('./routes/conversion'); // NEW
 
 // Connect to MongoDB
 connectDB();
@@ -46,6 +47,7 @@ app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/files', filesRouter);
+app.use('/api/conversion', conversionRouter); // NEW
 
 // Catch 404
 app.use(function(req, res, next) {
