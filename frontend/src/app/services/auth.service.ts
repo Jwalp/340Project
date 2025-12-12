@@ -130,4 +130,9 @@ export class AuthService {
     body: { confirmText }
   });
   }
+
+  getGoogleAuthUrl(): string {
+  const baseUrl = this.apiUrl.replace('/api', '');
+  return `${baseUrl}/api/auth/google`;
+}
 }
