@@ -5,6 +5,7 @@ import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-login',
@@ -60,6 +61,6 @@ export class LoginComponent {
   }
 
   onGoogleLogin(): void {
-    window.location.href = 'http://localhost:3000/api/auth/google';
-  }
+    window.location.href = `${environment.apiUrl.replace('/api', '')}/api/auth/google`;
+    }
 }
