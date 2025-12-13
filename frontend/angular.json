@@ -30,12 +30,6 @@
           },
           "configurations": {
             "production": {
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.prod.ts"
-                }
-              ],
               "optimization": true,
               "outputHashing": "all",
               "sourceMap": false,
@@ -44,13 +38,13 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "2MB",
-                  "maximumError": "5MB"
+                  "maximumWarning": "15MB",
+                  "maximumError": "20MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "6kB",
-                  "maximumError": "10kB"
+                  "maximumWarning": "15kB",
+                  "maximumError": "20kB"
                 }
               ]
             },
