@@ -24,20 +24,12 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    
-    // Get allowed origins from environment
-    const allowedOrigins = process.env.FRONTEND_URL 
-      ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-      : ['http://localhost:4200'];
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: [
+	'https://nonpeaked-mitch-unsynthesized.ngrok-free.dev',
+	'http://192.168.63.136',
+	'http://192.168.64.135:4200',
+	'http://localhost:4200'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
