@@ -117,8 +117,15 @@ export class AuthService {
     return localStorage.getItem('token');
   }
 
+  // Check if user is authenticated (has valid token and user data)
+  isAuthenticated(): boolean {
+    const token = this.getToken();
+    const user = localStorage.getItem('user');
+    return !!(token && user);
+  }
+
   isLoggedIn(): boolean {
-    return !!this.getToken();
+    return this.isAuthenticated();
   }
 
   getCurrentUser(): User | null {
@@ -126,13 +133,13 @@ export class AuthService {
   }
 
   deleteAccount(confirmText: string): Observable<MessageResponse> {
-  return this.http.delete<MessageResponse>(`${this.apiUrl}/auth/delete-account`, {
-    body: { confirmText }
-  });
+    return this.http.delete<MessageResponse>(`${this.apiUrl}/auth/delete-account`, {
+      body: { confirmText }
+    });
   }
 
   getGoogleAuthUrl(): string {
-  const baseUrl = this.apiUrl.replace('/api', '');
-  return `${baseUrl}/api/auth/google`;
-}
+    const baseUrl = this.apiUrl.replace('/api', '');
+    return `${baseUrl}/api/auth/google`;
+  }
 }

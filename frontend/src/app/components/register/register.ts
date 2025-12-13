@@ -1,5 +1,5 @@
 // frontend/src/app/components/register/register.ts
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -13,7 +13,7 @@ import { ToastService } from '../../services/toast.service';
   templateUrl: './register.html',
   styleUrls: ['./register.css']
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnInit {
   username = '';
   email = '';
   password = '';
@@ -30,6 +30,13 @@ export class RegisterComponent {
     private router: Router,
     private toastService: ToastService
   ) {}
+
+  ngOnInit(): void {
+    // If user is already logged in, redirect to dashboard
+    if (this.authService.isAuthenticated()) {
+      this.router.navigate(['/dashboard']);
+    }
+  }
 
   hasUpperCase(): boolean {
     return /[A-Z]/.test(this.password);

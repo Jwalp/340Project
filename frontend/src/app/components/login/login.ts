@@ -1,5 +1,5 @@
 // frontend/src/app/components/login/login.ts
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -14,7 +14,7 @@ import { environment } from '../../../environments/environment';
   templateUrl: './login.html',
   styleUrls: ['./login.css']
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   email = '';
   password = '';
   errorMessage = '';
@@ -26,6 +26,13 @@ export class LoginComponent {
     private router: Router,
     private toastService: ToastService
   ) {}
+
+  ngOnInit(): void {
+    // If user is already logged in, redirect to dashboard
+    if (this.authService.isAuthenticated()) {
+      this.router.navigate(['/dashboard']);
+    }
+  }
 
   onLogin(): void {
     this.errorMessage = '';
@@ -62,5 +69,5 @@ export class LoginComponent {
 
   onGoogleLogin(): void {
     window.location.href = `${environment.apiUrl.replace('/api', '')}/api/auth/google`;
-    }
+  }
 }
