@@ -4,8 +4,9 @@
     <p>Your universal file management platform</p>
     <p class="subtitle">Upload, view, edit, and convert files across different formats with ease</p>
     <div class="cta-buttons">
-      <a routerLink="/register" class="btn-large btn-primary">Get Started</a>
-      <a routerLink="/login" class="btn-large btn-outline">Sign In</a>
+      <a *ngIf="isLoggedIn" routerLink="/dashboard" class="btn-large btn-primary">Go to Dashboard</a>
+      <a *ngIf="!isLoggedIn" routerLink="/register" class="btn-large btn-primary">Get Started</a>      
+      <a *ngIf="!isLoggedIn" routerLink="/login" class="btn-large btn-outline">Sign In</a>
     </div>
   </div>
 
