@@ -1,0 +1,23 @@
+{
+  "name": "fileverse-fullstack",
+  "version": "1.0.0",
+  "description": "FileVerse - Full-stack MEAN application for file management",
+  "scripts": {
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev"
+  },
+  "engines": {
+    "node": "18.x",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jwalp/340Project.git"
+  },
+  "author": "jwalp",
+  "license": "MIT"
+}

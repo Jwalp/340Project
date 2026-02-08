@@ -1,0 +1,15 @@
+[phases.setup]
+# Install Node.js 18 and FFmpeg for media conversion
+nixPkgs = ["nodejs-18_x", "ffmpeg"]
+
+[phases.install]
+# Install dependencies for both backend and frontend
+cmds = ["npm run install:all"]
+
+[phases.build]
+# Build the frontend Angular application
+cmds = ["npm run build:frontend"]
+
+[start]
+# Start the Express backend server
+cmd = "cd backend && npm start"

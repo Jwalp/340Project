@@ -15,7 +15,7 @@ const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 const authRouter = require('./routes/auth');
 const filesRouter = require('./routes/files');
-const conversionRouter = require('./routes/conversion'); // NEW
+const conversionRouter = require('./routes/conversion');
 
 // Connect to MongoDB
 connectDB();
@@ -25,11 +25,9 @@ const app = express();
 // CORS configuration
 const corsOptions = {
   origin: [
-	'https://nonpeaked-mitch-unsynthesized.ngrok-free.dev',
-	'http://192.168.63.136',
-	'http://192.168.64.135:4200',
-	'http://localhost:4200'
-  ],
+    process.env.FRONTEND_URL || 'http://localhost:4200',
+    'http://localhost:4200'
+  ].filter(Boolean),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -51,12 +49,36 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Routes
+// API Routes (must come BEFORE static file serving)
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/files', filesRouter);
-app.use('/api/conversion', conversionRouter); // NEW
+app.use('/api/conversion', conversionRouter);
+
+// Serve Angular frontend in production
+if (process.env.NODE_ENV === 'production') {
+  console.log('🚀 Production mode: Serving Angular frontend');
+  
+  // Serve static files from Angular build
+  const frontendPath = path.join(__dirname, '../frontend/dist/frontend/browser');
+  app.use(express.static(frontendPath));
+  
+  // All other routes return the Angular app (SPA fallback)
+  app.get('*', (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api') || req.path.startsWith('/users')) {
+      return next();
+    }
+    
+    res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
+      if (err) {
+        console.error('Error serving index.html:', err);
+        next(createError(404));
+      }
+    });
+  });
+}
 
 // Catch 404
 app.use(function(req, res, next) {
